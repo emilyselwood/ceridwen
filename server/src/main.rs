@@ -142,7 +142,7 @@ struct SearchParams {
 #[post("/search")]
 async fn post_search(info: web::Query<SearchParams>) -> Result<HttpResponse, Error> {
     info!("post search!!! {}", info.q);
-    let results = get_search_results(&info.q)?;
+    let results = get_search_results(&info.q).await?;
     Ok(HttpResponse::Ok().json(results))
 }
 
@@ -153,9 +153,9 @@ async fn get_search(
 ) -> Result<HttpResponse, Error> {
     info!("get search!!! {}", info.q);
 
-    let results = get_search_results(&info.q)?;
+    let results = get_search_results(&info.q).await?;
 
-    // now to render the search results page!
+    // now to render the search results page
     let mut context = Context::new();
     context.insert("search_results", &results);
 
@@ -166,10 +166,10 @@ async fn get_search(
         .body(page_text))
 }
 
-fn get_search_results(q: &str) -> Result<Vec<SearchResult>, Error> {
+async fn get_search_results(q: &str) -> Result<Vec<SearchResult>, Error> {
     let index = Index::load(&index::index_dir())?;
 
-    let results = index.search(q)?;
+    let results = index.search(q).await?;
     Ok(results)
 }
 

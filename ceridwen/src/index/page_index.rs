@@ -1,35 +1,41 @@
-use std::fs;
-use std::io::prelude::*;
 use std::path::Path;
 use std::path::PathBuf;
+use tokio::fs;
+use tokio::fs::OpenOptions;
 
 use log::debug;
 use log::warn;
 use sha3::Digest;
 use sha3::Sha3_256;
+use tokio::io::AsyncWriteExt;
 
 use crate::error::Error;
 use crate::index::SearchResult;
 
-pub fn write_page_words(file_path: PathBuf, words: &Vec<(String, usize)>) -> Result<(), Error> {
+pub async fn write_page_words(
+    file_path: PathBuf,
+    words: &Vec<(String, usize)>,
+) -> Result<(), Error> {
     if file_path.exists() {
         warn!("Index file {:?} already exists. Overwriting it.", file_path)
     }
-    fs::create_dir_all(file_path.parent().unwrap())?;
+    fs::create_dir_all(file_path.parent().unwrap()).await?;
 
-    let mut file = fs::OpenOptions::new()
+    let mut file = OpenOptions::new()
         .create(true)
         .write(true)
-        .open(file_path)?;
+        .open(file_path)
+        .await?;
 
     for (word, count) in words.iter() {
-        writeln!(file, "{}::{}", word, count)?;
+        file.write_all(format!("{}::{}\n", word, count).as_bytes())
+            .await?;
     }
 
     Ok(())
 }
 
-pub fn load_page_details(file_path: PathBuf) -> Result<SearchResult, Error> {
+pub async fn load_page_details(file_path: PathBuf) -> Result<SearchResult, Error> {
     if !file_path.exists() {
         warn!("Expected page details file does not exist! {:?}", file_path);
         return Err(Error::BadIndexRecord);
@@ -37,16 +43,19 @@ pub fn load_page_details(file_path: PathBuf) -> Result<SearchResult, Error> {
 
     debug!("loading page details: {:?}", file_path);
 
-    let content = fs::read_to_string(file_path)?;
+    let content = fs::read_to_string(file_path).await?;
     let result: SearchResult = toml::from_str(&content)?;
 
     Ok(result)
 }
 
-pub fn write_page_details(file_path: PathBuf, page_details: &SearchResult) -> Result<(), Error> {
+pub async fn write_page_details(
+    file_path: PathBuf,
+    page_details: &SearchResult,
+) -> Result<(), Error> {
     let content = toml::to_string_pretty(page_details)?;
 
-    fs::write(file_path, content)?;
+    tokio::fs::write(file_path, content).await?;
 
     Ok(())
 }

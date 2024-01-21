@@ -63,11 +63,11 @@ impl Index {
         })
     }
 
-    pub fn search(&self, search_string: &str) -> Result<Vec<SearchResult>, Error> {
-        search::search(&self.root_dir, search_string)
+    pub async fn search(&self, search_string: &str) -> Result<Vec<SearchResult>, Error> {
+        search::search(&self.root_dir, search_string).await
     }
 
-    pub fn add_page(&mut self, page: &Page) -> Result<(), Error> {
+    pub async fn add_page(&mut self, page: &Page) -> Result<(), Error> {
         info!("adding {} to index", page.url);
         let mut words = tokenise(&page.title);
         words.append(&mut tokenise(&page.content));
@@ -83,10 +83,10 @@ impl Index {
                 "adding {} to index with count {} for {}",
                 word, count, page.url
             );
-            self.add_to_word_index(page, word, *count)?;
+            self.add_to_word_index(page, word, *count).await?;
         }
         debug!("adding {} to page index", page.url);
-        self.add_to_page_index(page, &word_counts)?;
+        self.add_to_page_index(page, &word_counts).await?;
 
         debug!("finished adding {} to the index", page.url);
         Ok(())
@@ -99,27 +99,30 @@ impl Index {
         todo!()
     }
 
-    fn add_to_word_index(&mut self, page: &Page, word: &str, count: usize) -> Result<(), Error> {
+    async fn add_to_word_index(
+        &mut self,
+        page: &Page,
+        word: &str,
+        count: usize,
+    ) -> Result<(), Error> {
         let index_file = word_index::word_to_path(&self.root_dir, word);
 
-        word_index::append_word_index(
-            index_file,
-            WordIndexEntry::new(page.url.to_string(), count),
-        )?;
+        word_index::append_word_index(index_file, WordIndexEntry::new(page.url.to_string(), count))
+            .await?;
 
         Ok(())
     }
 
-    fn add_to_page_index(
+    async fn add_to_page_index(
         &mut self,
         page: &Page,
         words: &Vec<(String, usize)>,
     ) -> Result<(), Error> {
         let index_file_path = page_index::url_to_words_path(&self.root_dir, &page.url);
-        page_index::write_page_words(index_file_path, words)?;
+        page_index::write_page_words(index_file_path, words).await?;
 
         let page_file_path = page_index::url_to_page_path(&self.root_dir, &page.url);
-        page_index::write_page_details(page_file_path, &page.into())?;
+        page_index::write_page_details(page_file_path, &page.into()).await?;
 
         Ok(())
     }

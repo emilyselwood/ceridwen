@@ -1,11 +1,6 @@
-use std::fs::File;
-use std::io;
-use std::io::BufRead;
 use std::path;
 use std::path::Path;
 use std::path::PathBuf;
-
-use crate::error::Error;
 
 pub mod config;
 pub mod error;
@@ -19,16 +14,6 @@ pub fn system_root() -> PathBuf {
     }
 
     home_option.unwrap().join(".ceridwen")
-}
-
-// The output is wrapped in a Result to allow matching on errors.
-// Returns an Iterator to the Reader of the lines of the file.
-fn read_lines<P>(filename: P) -> Result<io::Lines<io::BufReader<File>>, Error>
-where
-    P: AsRef<Path>,
-{
-    let file = File::open(filename)?;
-    Ok(io::BufReader::new(file).lines())
 }
 
 /// Take a path and turn it into

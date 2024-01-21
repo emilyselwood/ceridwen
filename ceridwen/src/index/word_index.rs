@@ -1,37 +1,49 @@
-use std::fs;
-use std::fs::OpenOptions;
-use std::io::prelude::*;
+use log::info;
 use std::path::Path;
 use std::path::PathBuf;
-
-use log::info;
+use tokio::fs;
+use tokio::fs::OpenOptions;
+use tokio::io;
+use tokio::io::AsyncBufReadExt;
+use tokio::io::AsyncWriteExt;
 
 use crate::error::Error;
-use crate::read_lines;
 
-pub fn lookup_word(root_dir: &str, word: &str) -> Result<Vec<WordIndexEntry>, Error> {
+pub async fn lookup_word(root_dir: &str, word: &str) -> Result<Vec<WordIndexEntry>, Error> {
     let file_path = word_to_path(root_dir, word);
 
-    read_word_index_file(file_path)
+    read_word_index_file(file_path).await
 }
 
-pub fn read_word_index_file(path: PathBuf) -> Result<Vec<WordIndexEntry>, Error> {
+pub async fn read_word_index_file(path: PathBuf) -> Result<Vec<WordIndexEntry>, Error> {
     info!("reading index file {:?}", path);
     let mut result = Vec::new();
-    let lines = read_lines(path.clone())?;
+
+    let file = fs::OpenOptions::new()
+        .read(true)
+        .open(path.as_path())
+        .await?;
+
+    let buffered_reader = io::BufReader::new(file);
+    let mut lines = buffered_reader.lines();
     // Consumes the iterator, returns an (Optional) String
-    for line in lines {
-        result.push(WordIndexEntry::from_string(line.unwrap())?);
+    while let Some(line) = lines.next_line().await? {
+        result.push(WordIndexEntry::from_string(line)?);
     }
     info!("read index file {:?}, got {} entries", path, result.len());
     Ok(result)
 }
 
-pub fn append_word_index(path: PathBuf, entry: WordIndexEntry) -> Result<(), Error> {
-    fs::create_dir_all(path.parent().unwrap())?;
-    let mut file = OpenOptions::new().create(true).append(true).open(path)?;
+pub async fn append_word_index(path: PathBuf, entry: WordIndexEntry) -> Result<(), Error> {
+    fs::create_dir_all(path.parent().unwrap()).await?;
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .await?;
 
-    writeln!(file, "{}", entry.to_record())?;
+    file.write_all(format!("{}\n", entry.to_record()).as_bytes())
+        .await?;
 
     Ok(())
 }
