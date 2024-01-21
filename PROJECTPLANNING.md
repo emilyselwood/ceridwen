@@ -14,6 +14,7 @@
 
 * Work out query list
 * Locks on directories to prevent overwriting
+* async file io
 
 ## Crawler
 
