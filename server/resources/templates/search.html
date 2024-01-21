@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Ceridwen</title>
+        <link rel="stylesheet" href="css/core.css" />
+        <script src="scripts/index.js"></script>
+    </head>
+    <body>
+        <h1>Ceridwen</h1>
+        <input type="text" id="query_box">
+        <input type="button" value="Search" onclick="search_button_click()">
+        <div class="resultsWrapper">
+            {% for result in search_results -%}
+                <div class="searchResult">
+                    <div class="searchResultTitle"><a href="{{result.url}}">{{result.title}}</a></div>
+                    <div class="searchResultDescription">{{result.description}}</div>
+                </div>
+            {% endfor -%}
+        </div>
+    </body>
+</html>
