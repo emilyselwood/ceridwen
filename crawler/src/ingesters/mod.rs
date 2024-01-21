@@ -30,11 +30,13 @@ pub async fn process_ingester(ingester_config: Ingester, config: Config) {
     }
 }
 
-async fn process(ingester_config: Ingester, config: Config) -> Result<(), Error> {
+async fn process(ingester_config: Ingester, mut config: Config) -> Result<(), Error> {
     let next_run = ingester_config
         .last_update
         .checked_add_days(Days::new(ingester_config.interval_days))
         .unwrap();
+
+    let name = ingester_config.name.clone();
 
     if next_run > Utc::now() {
         info!(
@@ -45,13 +47,20 @@ async fn process(ingester_config: Ingester, config: Config) -> Result<(), Error>
     }
 
     match ingester_config.ingester_type.as_str() {
-        "rss" => process_rss(ingester_config, config).await,
-        "wikipedia" => process_wikipedia(ingester_config, config).await,
-        "spider" => process_spider(ingester_config, config).await,
+        "rss" => process_rss(ingester_config, config.clone()).await,
+        "wikipedia" => process_wikipedia(ingester_config, config.clone()).await,
+        "spider" => process_spider(ingester_config, config.clone()).await,
         a => Err(Error::UnknownIngester(a.to_string())),
     }?;
 
-    // TODO: update the config so its got the right date on it.
+    // update the config so its got the right date on it.
+    for ingester in config.targets.iter_mut() {
+        if ingester.name == name {
+            ingester.last_update = Utc::now();
+            break;
+        }
+    }
+    config.save()?;
 
     Ok(())
 }
