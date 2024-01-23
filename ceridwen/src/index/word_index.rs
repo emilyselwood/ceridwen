@@ -1,3 +1,4 @@
+use log::debug;
 use log::info;
 use std::path::Path;
 use std::path::PathBuf;
@@ -18,6 +19,11 @@ pub async fn lookup_word(root_dir: &str, word: &str) -> Result<Vec<WordIndexEntr
 pub async fn read_word_index_file(path: PathBuf) -> Result<Vec<WordIndexEntry>, Error> {
     info!("reading index file {:?}", path);
     let mut result = Vec::new();
+
+    if !path.exists() {
+        debug!("index file doesn't exist, this word is not in our index");
+        return Ok(result);
+    }
 
     let file = fs::OpenOptions::new()
         .read(true)

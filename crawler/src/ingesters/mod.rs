@@ -1,8 +1,6 @@
 use ceridwen::config::Config;
 use ceridwen::config::Ingester;
 use ceridwen::error::Error;
-use chrono::Days;
-use chrono::Utc;
 use log::info;
 use log::warn;
 
@@ -24,14 +22,11 @@ pub async fn process_ingester(ingester_config: Ingester, config: Config) {
 }
 
 async fn process(ingester_config: Ingester, mut config: Config) -> Result<(), Error> {
-    let next_run = ingester_config
-        .last_update
-        .checked_add_days(Days::new(ingester_config.interval_days))
-        .unwrap();
+    let next_run = ingester_config.last_update + ingester_config.update_interval;
 
     let name = ingester_config.name.clone();
 
-    if next_run > Utc::now() {
+    if next_run > time::OffsetDateTime::now_utc() {
         info!(
             "Not ready to process {} until {}",
             ingester_config.name, next_run
@@ -49,7 +44,7 @@ async fn process(ingester_config: Ingester, mut config: Config) -> Result<(), Er
     // update the config so its got the right date on it.
     for ingester in config.targets.iter_mut() {
         if ingester.name == name {
-            ingester.last_update = Utc::now();
+            ingester.last_update = time::OffsetDateTime::now_utc();
             break;
         }
     }

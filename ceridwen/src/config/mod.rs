@@ -1,10 +1,8 @@
-use chrono::Days;
-use chrono::Utc;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fs;
-use time::Duration;
+use time;
 use toml;
 
 use crate::error::Error;
@@ -14,16 +12,16 @@ pub struct Config {
     pub targets: Vec<Ingester>,
     pub server: Server,
     pub crawler: Crawler,
-    pub last_update: chrono::DateTime<Utc>,
+    pub last_update: time::OffsetDateTime,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Ingester {
     pub name: String,
     pub ingester_type: String,
-    pub interval_days: u64,
+    pub update_interval: time::Duration,
     pub base_url: Option<String>,
-    pub last_update: chrono::DateTime<Utc>,
+    pub last_update: time::OffsetDateTime,
     pub options: HashMap<String, String>,
 }
 
@@ -49,7 +47,7 @@ pub struct Crawler {
     pub workers: usize,
 
     /// Minimum amount of time before the crawler will go back to a page to check for changes.
-    pub min_update_interval: Duration,
+    pub min_update_interval: time::Duration,
 }
 
 impl Config {
@@ -69,9 +67,9 @@ impl Config {
                 Ingester {
                     name: "parsecsreach".to_string(),
                     ingester_type: "rss".to_string(),
-                    interval_days: 7,
+                    update_interval: time::Duration::days(7),
                     base_url: Some("https://parsecsreach.org/index.xml".to_string()),
-                    last_update: Utc::now().checked_sub_days(Days::new(7)).unwrap(),
+                    last_update: time::OffsetDateTime::now_utc() - time::Duration::days(7),
                     options: HashMap::new(),
                 },
                 // A test ingester for an rss feed that has a robots.txt file
@@ -92,9 +90,9 @@ impl Config {
             crawler: Crawler {
                 log_level: "debug".to_string(),
                 workers: 8,
-                min_update_interval: Duration::days(1),
+                min_update_interval: time::Duration::days(1),
             },
-            last_update: Utc::now(),
+            last_update: time::OffsetDateTime::now_utc(),
         }
     }
 

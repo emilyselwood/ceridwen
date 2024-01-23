@@ -4,6 +4,7 @@
 * Find and set up example sites
     * Something to spider
 * Refactor errors in crawler and lib
+* Logo
 
 ## Init process
 
@@ -14,13 +15,11 @@
 
 * Work out query list
 * Locks on directories to prevent overwriting
-* async file io
 
 ## Crawler
 
 * cache robots.txt files
 * Ingesters
-    * RSS feed
     * Wikipedia
     * rust docs
     * python docs
@@ -32,8 +31,6 @@
 ## Server
 
 * Only allow connections from local subnet
-* Build search results page
-* Query api
 * favicon
 
 # DONE!!!!!
@@ -59,6 +56,8 @@
 * Static files copied to target dir
 * Serve home page
 * Build home page and make it hit the query end point
+* Build search results page
+* Query api
 
 ## Index
 
@@ -71,3 +70,5 @@
 * Engine
 * Define useragent
 * Read robots.txt files
+* Ingesters
+    * RSS feed

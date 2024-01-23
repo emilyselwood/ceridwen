@@ -4,3 +4,11 @@ body {
     color: aqua;
     height: 100%;
 }
+
+div.searchResult {
+    padding: 5px;
+}
+
+div.searchResultTitle.a {
+    font-weight: 700;
+}

@@ -3,7 +3,6 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
-use chrono::Utc;
 use log::debug;
 use log::info;
 use serde::Deserialize;
@@ -67,7 +66,21 @@ impl Index {
         search::search(&self.root_dir, search_string).await
     }
 
-    pub async fn add_page(&mut self, page: &Page) -> Result<(), Error> {
+    pub async fn add_page(
+        &mut self,
+        page: &Page,
+        min_update_interval: time::Duration,
+    ) -> Result<(), Error> {
+        // check if we have the page already, and if its old enough to need an update
+        if let Some(last_index_time) = self.last_index_time(page).await? {
+            if last_index_time + min_update_interval > time::OffsetDateTime::now_utc() {
+                info!(
+                    "Last indexed {} at {} its too soon to do it again.",
+                    page.url, last_index_time
+                );
+                return Ok(());
+            }
+        }
         info!("adding {} to index", page.url);
         let mut words = tokenise(&page.title);
         words.append(&mut tokenise(&page.content));
@@ -126,6 +139,16 @@ impl Index {
 
         Ok(())
     }
+
+    async fn last_index_time(&self, page: &Page) -> Result<Option<time::OffsetDateTime>, Error> {
+        let page_file_path = page_index::url_to_page_path(&self.root_dir, &page.url);
+        if !page_file_path.exists() {
+            return Ok(None);
+        }
+        let page_file = page_index::load_page_details(page_file_path).await?;
+
+        Ok(Some(page_file.last_index.clone()))
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -133,7 +156,7 @@ pub struct SearchResult {
     pub url: String,
     pub title: String,
     pub description: String,
-    pub last_index: chrono::DateTime<Utc>,
+    pub last_index: time::OffsetDateTime,
 }
 
 impl From<&Page> for SearchResult {
@@ -142,7 +165,7 @@ impl From<&Page> for SearchResult {
             url: value.url.to_string(),
             title: value.title.clone(),
             description: value.content.chars().take(250).collect(),
-            last_index: Utc::now(),
+            last_index: time::OffsetDateTime::now_utc(),
         }
     }
 }

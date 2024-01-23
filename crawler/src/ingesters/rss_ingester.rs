@@ -65,7 +65,9 @@ pub(crate) async fn process_rss(ingester_config: Ingester, config: Config) -> Re
         };
 
         // add page to the index
-        index.add_page(&page).await?;
+        index
+            .add_page(&page, ingester_config.update_interval)
+            .await?;
     }
 
     info!("Done processing rss feed {}", ingester_config.name);
