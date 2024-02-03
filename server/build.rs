@@ -15,14 +15,18 @@ fn main() {
         .expect("failed to find target dir")
         .join(env::var("PROFILE").unwrap());
 
-    // Download font and put it into resources/static/fonts
+    // Download fonts and put into resources/static/fonts
+    let fonts_dir = manifest_dir.join("resources").join("static").join("fonts");
+
     download(
         "https://github.com/NDISCOVER/Cinzel/raw/master/fonts/ttf/Cinzel-Regular.ttf",
-        &manifest_dir
-            .join("resources")
-            .join("static")
-            .join("fonts")
-            .join("Cinzel-Regular.ttf"),
+        &fonts_dir.join("Cinzel-Regular.ttf"),
+    )
+    .unwrap();
+
+    download(
+        "https://github.com/CatharsisFonts/Cormorant/raw/master/fonts/ttf/Cormorant-Light.ttf",
+        &fonts_dir.join("Cormorant-Light.ttf"),
     )
     .unwrap();
 

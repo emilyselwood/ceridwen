@@ -3,21 +3,35 @@
     src: url("/fonts/Cinzel-Regular.ttf")  format('truetype');
 }
 
+@font-face {
+    font-family: Cormorant;
+    src: url("/fonts/Cormorant-Light.ttf")  format('truetype');
+}
+
 body {
-    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    font-family: 'Cormorant', 'Times New Roman', Times, serif;
     background: #000;
     color: aqua;
     height: 100%;
 }
 
-h1.ceridwen_logo {
+input {
+    font-family: inherit;
+    font-size: 1em;
+}
+
+h1.ceridwenLogo {
     font-family: 'Cinzel', 'Times New Roman', Times, serif;
+}
+
+div.resultsWrapper {
+    max-width: 800px;
 }
 
 div.searchResult {
     padding: 5px;
 }
 
-div.searchResultTitle.a {
+div.searchResultTitle {
     font-weight: 700;
 }

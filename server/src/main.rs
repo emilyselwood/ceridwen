@@ -162,12 +162,12 @@ async fn get_search(
     info: web::Query<SearchParams>,
 ) -> Result<HttpResponse, Error> {
     info!("get search!!! {}", info.q);
-
     let results = get_search_results(&info.q).await?;
 
     // now to render the search results page
     let mut context = Context::new();
     context.insert("search_results", &results);
+    context.insert("search_term", &info.q);
 
     let page_text = app_data.templates.render("search.html", &context)?;
 
