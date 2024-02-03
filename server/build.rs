@@ -1,3 +1,4 @@
+extern crate ureq;
 extern crate walkdir;
 
 use std::env;
@@ -10,10 +11,20 @@ fn main() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
 
     // locate executable path even if the project is in workspace
-
     let executable_path = locate_target_dir_from_output_dir(&out_dir)
         .expect("failed to find target dir")
         .join(env::var("PROFILE").unwrap());
+
+    // Download font and put it into resources/static/fonts
+    download(
+        "https://github.com/NDISCOVER/Cinzel/raw/master/fonts/ttf/Cinzel-Regular.ttf",
+        &manifest_dir
+            .join("resources")
+            .join("static")
+            .join("fonts")
+            .join("Cinzel-Regular.ttf"),
+    )
+    .unwrap();
 
     copy(&manifest_dir.join("resources"), &executable_path);
 }
@@ -54,4 +65,34 @@ fn copy(from: &Path, to: &Path) {
             }
         }
     }
+}
+
+fn download(from: &str, to: &Path) -> Result<(), String> {
+    // exit if the file already exists.
+    if to.exists() {
+        return Ok(());
+    }
+
+    // make sure the target directory exists.
+    if !to.parent().unwrap().exists() {
+        fs::create_dir_all(to.parent().unwrap()).map_err(|error| error.to_string())?;
+    }
+
+    let response = ureq::get(from).call().map_err(|error| error.to_string())?;
+
+    // Only accept 2xx status codes
+    if !(200..300).contains(&response.status()) {
+        return Err(format!("Download error: HTTP {}", response.status()));
+    }
+
+    let mut body = Vec::new();
+    response
+        .into_reader()
+        .read_to_end(&mut body)
+        .map_err(|error| error.to_string())?;
+
+    // write the file into the source tree.
+    fs::write(to, body).map_err(|error| error.to_string())?;
+
+    Ok(())
 }

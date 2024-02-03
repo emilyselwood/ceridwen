@@ -1,8 +1,17 @@
+@font-face {
+    font-family: Cinzel;
+    src: url("/fonts/Cinzel-Regular.ttf")  format('truetype');
+}
+
 body {
     font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
     background: #000;
     color: aqua;
     height: 100%;
+}
+
+h1.ceridwen_logo {
+    font-family: 'Cinzel', 'Times New Roman', Times, serif;
 }
 
 div.searchResult {

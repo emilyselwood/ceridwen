@@ -58,6 +58,7 @@
 * Build home page and make it hit the query end point
 * Build search results page
 * Query api
+* build.rs download fonts into resources/static/fonts if they don't exist.
 
 ## Index
 

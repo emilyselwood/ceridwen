@@ -28,7 +28,7 @@ use crate::error::Error;
 mod error;
 
 pub struct AppData {
-    config: Config,
+    _config: Config,
     templates: Tera,
 }
 
@@ -57,7 +57,7 @@ async fn run_server() -> Result<(), Error> {
     );
 
     let app_data = AppData {
-        config: config.clone(),
+        _config: config.clone(),
         templates: load_templates()?,
     };
 
@@ -77,6 +77,7 @@ async fn run_server() -> Result<(), Error> {
             )
             .route("/css/{filename:.*\\.css}", web::get().to(css_host))
             .route("/scripts/{filename:.*\\.js}", web::get().to(script_host))
+            .route("/fonts/{filename:.*\\.ttf}", web::get().to(fonts_host))
             // Index page routes
             .route("/", web::get().to(index_page))
             .route("/index.html", web::get().to(index_page))
@@ -115,6 +116,15 @@ async fn script_host(req: HttpRequest) -> io::Result<NamedFile> {
     let full_path = root_path.join(path);
 
     debug!("trying to serve script {}", full_path.display());
+    Ok(NamedFile::open(full_path)?)
+}
+
+async fn fonts_host(req: HttpRequest) -> io::Result<NamedFile> {
+    let root_path: PathBuf = get_root_path("static/fonts/");
+    let path: PathBuf = req.match_info().query("filename").parse().unwrap();
+    let full_path = root_path.join(path);
+
+    debug!("trying to serve font {}", full_path.display());
     Ok(NamedFile::open(full_path)?)
 }
 

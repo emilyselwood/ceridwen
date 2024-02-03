@@ -8,6 +8,7 @@ edition = "2021"
 
 [build-dependencies]
 walkdir = "2.1"
+ureq = "2.9"
 
 [dependencies]
 ceridwen = {path = "../ceridwen"}
