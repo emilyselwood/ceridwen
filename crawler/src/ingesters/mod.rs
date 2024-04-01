@@ -1,14 +1,16 @@
+use crate::error::Error;
 use ceridwen::config::Config;
 use ceridwen::config::Ingester;
-use ceridwen::error::Error;
 use log::info;
 use log::warn;
 
 mod rss_ingester;
+mod wikipedia;
 
 /// These are tools for reading in a data source and adding to the index so we can search things.
 ///
 
+/// entry point and error logging wrapper
 pub async fn process_ingester(ingester_config: Ingester, config: Config) {
     let name = ingester_config.name.clone();
     let result = process(ingester_config, config).await;
@@ -21,6 +23,7 @@ pub async fn process_ingester(ingester_config: Ingester, config: Config) {
     }
 }
 
+/// actual main processing function.
 async fn process(ingester_config: Ingester, mut config: Config) -> Result<(), Error> {
     let next_run = ingester_config.last_update + ingester_config.update_interval;
 
@@ -34,9 +37,11 @@ async fn process(ingester_config: Ingester, mut config: Config) -> Result<(), Er
         return Ok(());
     }
 
+    let start_time = time::Instant::now();
+
     match ingester_config.ingester_type.as_str() {
         "rss" => rss_ingester::process_rss(ingester_config, config.clone()).await,
-        "wikipedia" => process_wikipedia(ingester_config, config.clone()).await,
+        "wikipedia" => wikipedia::process_wikipedia(ingester_config, config.clone()).await,
         "spider" => process_spider(ingester_config, config.clone()).await,
         a => Err(Error::UnknownIngester(a.to_string())),
     }?;
@@ -50,11 +55,10 @@ async fn process(ingester_config: Ingester, mut config: Config) -> Result<(), Er
     }
     config.save()?;
 
-    Ok(())
-}
+    let duration = start_time.elapsed();
+    info!("Processing {} took {}", &name, duration);
 
-async fn process_wikipedia(_ingester_config: Ingester, _config: Config) -> Result<(), Error> {
-    todo!();
+    Ok(())
 }
 
 async fn process_spider(_ingester_config: Ingester, _config: Config) -> Result<(), Error> {

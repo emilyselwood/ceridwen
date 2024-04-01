@@ -48,7 +48,6 @@ impl Index {
     }
 
     pub fn load(root_dir: &PathBuf) -> Result<Self, Error> {
-        info!("Loading index at {:?}", root_dir);
         let root_path = Path::new(&root_dir);
         // check the path exists
         if !root_path.exists() {
@@ -79,9 +78,13 @@ impl Index {
                     page.url, last_index_time
                 );
                 return Ok(());
+            } else {
+                info!("{} already exists in index", page.url);
+                // delete the existing records so we can update them.
+                self.delete_page(&page.url).await?;
             }
         }
-        info!("adding {} to index", page.url);
+        info!("adding {} to word index", page.url);
         let mut words = tokenise(&page.title);
         words.append(&mut tokenise(&page.content));
 
@@ -92,10 +95,10 @@ impl Index {
         let word_counts = count_words(words);
 
         for (word, count) in word_counts.iter() {
-            debug!(
-                "adding {} to index with count {} for {}",
-                word, count, page.url
-            );
+            // debug!(
+            //     "adding {} to index with count {} for {}",
+            //     word, count, page.url
+            // );
             self.add_to_word_index(page, word, *count).await?;
         }
         debug!("adding {} to page index", page.url);
@@ -105,11 +108,21 @@ impl Index {
         Ok(())
     }
 
-    pub fn delete_page(&mut self, _url: String) -> Result<(), Error> {
-        // get the list of words for a url
-        // go through and remove the page from every one of those words.
+    pub async fn delete_page(&mut self, url: &url::Url) -> Result<(), Error> {
+        info!("deleting {} from index", url);
 
-        todo!()
+        // get the list of words for a url
+        let word_file_path = page_index::url_to_words_path(&self.root_dir, url);
+        let words = page_index::load_page_words(word_file_path).await?;
+
+        // go through and remove the page from every one of those words ... this is going to be evil.
+
+        for (word, _count) in words.iter() {
+            let word_path = word_index::word_to_path(&self.root_dir, word);
+            word_index::delete_url(word_path, url.to_string()).await?;
+        }
+
+        Ok(())
     }
 
     async fn add_to_word_index(
@@ -129,7 +142,7 @@ impl Index {
     async fn add_to_page_index(
         &mut self,
         page: &Page,
-        words: &Vec<(String, usize)>,
+        words: &[(String, usize)],
     ) -> Result<(), Error> {
         let index_file_path = page_index::url_to_words_path(&self.root_dir, &page.url);
         page_index::write_page_words(index_file_path, words).await?;
@@ -147,7 +160,7 @@ impl Index {
         }
         let page_file = page_index::load_page_details(page_file_path).await?;
 
-        Ok(Some(page_file.last_index.clone()))
+        Ok(Some(page_file.last_index))
     }
 }
 
@@ -176,7 +189,8 @@ fn tokenise(text: &str) -> Vec<String> {
         .map(|w| {
             w.trim().replace(
                 &[
-                    '(', ')', ',', '\"', '.', ';', ':', '\'', '?', '<', '>', '\\', '/',
+                    '(', ')', ',', '\"', '.', ';', ':', '\'', '?', '<', '>', '\\', '/', '*', '{',
+                    '}', '|', '#', '=',
                 ][..],
                 "",
             )
@@ -186,7 +200,7 @@ fn tokenise(text: &str) -> Vec<String> {
 
 fn filter(words: Vec<String>) -> Vec<String> {
     // TODO: implement stop word filters
-    words
+    words.into_iter().filter(|s| !s.is_empty()).collect()
 }
 
 fn count_words(words: Vec<String>) -> Vec<(String, usize)> {
@@ -196,8 +210,5 @@ fn count_words(words: Vec<String>) -> Vec<(String, usize)> {
         *result.entry(word).or_insert(0) += 1;
     }
 
-    result
-        .iter()
-        .map(|(k, v)| ((*k).clone(), v.clone()))
-        .collect()
+    result.iter().map(|(k, v)| ((*k).clone(), *v)).collect()
 }

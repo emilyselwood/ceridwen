@@ -1,13 +1,8 @@
-use log::debug;
 use log::info;
 use std::path::Path;
 use std::path::PathBuf;
-use tokio::fs;
-use tokio::fs::OpenOptions;
-use tokio::io;
-use tokio::io::AsyncBufReadExt;
-use tokio::io::AsyncWriteExt;
 
+use crate::data_file;
 use crate::error::Error;
 
 pub async fn lookup_word(root_dir: &str, word: &str) -> Result<Vec<WordIndexEntry>, Error> {
@@ -18,40 +13,25 @@ pub async fn lookup_word(root_dir: &str, word: &str) -> Result<Vec<WordIndexEntr
 
 pub async fn read_word_index_file(path: PathBuf) -> Result<Vec<WordIndexEntry>, Error> {
     info!("reading index file {:?}", path);
-    let mut result = Vec::new();
-
     if !path.exists() {
-        debug!("index file doesn't exist, this word is not in our index");
-        return Ok(result);
+        // if the index file doesn't exist return an empty list as there isn't something with that word
+        return Ok(Vec::new());
     }
 
-    let file = fs::OpenOptions::new()
-        .read(true)
-        .open(path.as_path())
-        .await?;
-
-    let buffered_reader = io::BufReader::new(file);
-    let mut lines = buffered_reader.lines();
-    // Consumes the iterator, returns an (Optional) String
-    while let Some(line) = lines.next_line().await? {
-        result.push(WordIndexEntry::from_string(line)?);
-    }
-    info!("read index file {:?}, got {} entries", path, result.len());
-    Ok(result)
+    data_file::read_all(&path)
+        .await?
+        .iter()
+        .map(|i| WordIndexEntry::from_string(i))
+        .collect()
 }
 
 pub async fn append_word_index(path: PathBuf, entry: WordIndexEntry) -> Result<(), Error> {
-    fs::create_dir_all(path.parent().unwrap()).await?;
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path)
-        .await?;
-
-    file.write_all(format!("{}\n", entry.to_record()).as_bytes())
-        .await?;
-
+    data_file::append(&path, &entry.to_record()).await?;
     Ok(())
+}
+
+pub async fn delete_url(path: PathBuf, url: String) -> Result<(), Error> {
+    data_file::find_and_delete(&path, &url).await
 }
 
 pub fn word_to_path(root_dir: &str, word: &str) -> PathBuf {
@@ -68,13 +48,13 @@ pub struct WordIndexEntry {
 }
 
 impl WordIndexEntry {
-    pub fn from_string(line: String) -> Result<WordIndexEntry, Error> {
+    pub fn from_string(line: &str) -> Result<WordIndexEntry, Error> {
         let parts: Vec<&str> = line.split("::").collect();
         if parts.len() != 2 {
             return Err(Error::BadIndexRecord);
         }
 
-        let count = usize::from_str_radix(parts[1], 10)?;
+        let count = parts[1].parse::<usize>()?;
         Ok(WordIndexEntry {
             url: parts[0].to_string(),
             count,

@@ -12,9 +12,9 @@ function search_button_click() {
 function setup() {
     
     document.querySelector("#searchBox").addEventListener("keyup", event => {
-        if(event.key !== "Enter") return; // Use `.key` instead.
-        document.querySelector("#searchButton").click(); // Things you want to do.
-        event.preventDefault(); // No need to `return false;`.
+        if(event.key !== "Enter") return;
+        document.querySelector("#searchButton").click(); 
+        event.preventDefault();
     });
 
 }

@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::io::BufRead;
 
+use crate::error::Error;
 use bytes::Bytes;
-use ceridwen::error::Error;
 use reqwest::Client;
 use url::Url;
 
@@ -26,7 +26,7 @@ pub async fn check_robots_file(client: &Client, url: &Url) -> Result<bool, Error
     let robots = Robots::parse_file(robots_result.unwrap())?;
 
     // look for our user agent and url and see if it matches
-    let rule = robots.check_url(web_client::USER_AGENT, &url);
+    let rule = robots.check_url(web_client::USER_AGENT, url);
     match rule {
         Some(RobotRule::Deny(_)) => Ok(false),
         Some(RobotRule::Allow(_)) => Ok(true),
@@ -74,14 +74,14 @@ impl Robots {
         let mut parse_state = ParseState::UserAgents;
 
         for line_result in body.lines() {
-            if line_result.is_err() {
-                return Err(Error::IOError(line_result.unwrap_err()));
+            if let Err(error) = line_result {
+                return Err(Error::IOError(error));
             }
 
             let line = line_result.unwrap();
             let trimmed = line.trim();
             // skip blank lines and comments
-            if trimmed.is_empty() || trimmed.starts_with("#") {
+            if trimmed.is_empty() || trimmed.starts_with('#') {
                 continue;
             }
 
@@ -166,7 +166,7 @@ impl Robots {
             }
         }
 
-        return None;
+        None
     }
 }
 

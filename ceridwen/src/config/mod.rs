@@ -59,43 +59,6 @@ impl Config {
             .to_string()
     }
 
-    /// Create a default config object. Very rarely needed, shouldn't be used outside of init.
-    pub fn new() -> Config {
-        Config {
-            targets: vec![
-                // A test ingester for an rss feed with out a robots.txt file
-                Ingester {
-                    name: "parsecsreach".to_string(),
-                    ingester_type: "rss".to_string(),
-                    update_interval: time::Duration::days(7),
-                    base_url: Some("https://parsecsreach.org/index.xml".to_string()),
-                    last_update: time::OffsetDateTime::now_utc() - time::Duration::days(7),
-                    options: HashMap::new(),
-                },
-                // A test ingester for an rss feed that has a robots.txt file
-                // Ingester {
-                //     name: "slate".to_string(),
-                //     ingester_type: "rss".to_string(),
-                //     interval_days: 1,
-                //     base_url: Some("https://slate.com/feeds/all.rss".to_string()),
-                //     last_update: Utc::now().checked_sub_days(Days::new(1)).unwrap(),
-                //     options: HashMap::new(),
-                // },
-            ],
-            server: Server {
-                log_level: "info".to_string(),
-                port: 8080,
-                workers: 2,
-            },
-            crawler: Crawler {
-                log_level: "debug".to_string(),
-                workers: 8,
-                min_update_interval: time::Duration::days(1),
-            },
-            last_update: time::OffsetDateTime::now_utc(),
-        }
-    }
-
     /// Load the config from the standard place on disk.
     pub fn load() -> Result<Config, Error> {
         let config_path = Config::config_path();
@@ -124,5 +87,51 @@ impl Config {
         fs::write(config_path, content)?;
 
         Ok(())
+    }
+}
+
+impl Default for Config {
+    fn default() -> Config {
+        Config {
+            targets: vec![
+                // A test ingester for an rss feed with out a robots.txt file
+                Ingester {
+                    name: "parsecsreach".to_string(),
+                    ingester_type: "rss".to_string(),
+                    update_interval: time::Duration::days(7),
+                    base_url: Some("https://parsecsreach.org/index.xml".to_string()),
+                    last_update: time::OffsetDateTime::now_utc() - time::Duration::days(7),
+                    options: HashMap::new(),
+                },
+                // A test ingester for an rss feed that has a robots.txt file
+                // Ingester {
+                //     name: "slate".to_string(),
+                //     ingester_type: "rss".to_string(),
+                //     interval_days: 1,
+                //     base_url: Some("https://slate.com/feeds/all.rss".to_string()),
+                //     last_update: Utc::now().checked_sub_days(Days::new(1)).unwrap(),
+                //     options: HashMap::new(),
+                // },
+                Ingester {
+                    name: "wikipedia".to_string(),
+                    ingester_type: "wikipedia".to_string(),
+                    update_interval: time::Duration::days(7),
+                    base_url: None,
+                    last_update: time::OffsetDateTime::now_utc() - time::Duration::days(90),
+                    options: HashMap::new(),
+                },
+            ],
+            server: Server {
+                log_level: "info".to_string(),
+                port: 8080,
+                workers: 2,
+            },
+            crawler: Crawler {
+                log_level: "debug".to_string(),
+                workers: 16,
+                min_update_interval: time::Duration::days(1),
+            },
+            last_update: time::OffsetDateTime::now_utc() - time::Duration::days(90),
+        }
     }
 }

@@ -1,11 +1,14 @@
+use std::env;
 use std::path;
 use std::path::Path;
 use std::path::PathBuf;
 
 pub mod config;
+pub mod data_file;
 pub mod error;
 pub mod index;
 pub mod page;
+pub mod percentage;
 
 pub fn system_root() -> PathBuf {
     let home_option = home::home_dir();
@@ -14,6 +17,10 @@ pub fn system_root() -> PathBuf {
     }
 
     home_option.unwrap().join(".ceridwen")
+}
+
+pub fn temp_dir() -> PathBuf {
+    env::temp_dir().join("ceridwen")
 }
 
 /// Take a path and turn it into
@@ -26,8 +33,7 @@ where
         .to_str()
         .unwrap()
         .to_string()
-        .replace("/", path::MAIN_SEPARATOR_STR)
-        .replace("\\", path::MAIN_SEPARATOR_STR)
+        .replace(['/', '\\'], path::MAIN_SEPARATOR_STR)
 }
 
 #[cfg(test)]

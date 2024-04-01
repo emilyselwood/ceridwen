@@ -10,9 +10,16 @@ ceridwen = {path = "../ceridwen"}
 
 log = "0.4"
 env_logger = "0.11"
-time = {version="0.3.31", features = ["serde"]}
+time = {version="0.3.31", features = ["serde", "parsing", "formatting", "macros"]}
 tokio = { version = "1", features = ["full"] }
+humansize = "2.0.0"
 url = "2.5.0"
-reqwest = "0.11.23"
+reqwest = "0.12.2"
 bytes = "1.5"
 rss = "2.0.7"
+thiserror = "1.0"
+
+# reading the wikipedia archive
+bzip2 = "0.4.4"
+quick-xml = "0.31.0"
+slugify = "0.1.0"

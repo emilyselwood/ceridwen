@@ -12,10 +12,8 @@ use tokio::io::AsyncWriteExt;
 use crate::error::Error;
 use crate::index::SearchResult;
 
-pub async fn write_page_words(
-    file_path: PathBuf,
-    words: &Vec<(String, usize)>,
-) -> Result<(), Error> {
+/* Write the entire list of words to disk for this page. All at once, no appending. */
+pub async fn write_page_words(file_path: PathBuf, words: &[(String, usize)]) -> Result<(), Error> {
     if file_path.exists() {
         warn!("Index file {:?} already exists. Overwriting it.", file_path)
     }
@@ -33,6 +31,23 @@ pub async fn write_page_words(
     }
 
     Ok(())
+}
+
+/* Load a pages word list. */
+pub async fn load_page_words(file_path: PathBuf) -> Result<Vec<(String, usize)>, Error> {
+    if !file_path.exists() {
+        return Err(Error::BadIndexRecord);
+    }
+
+    let mut result = Vec::new();
+
+    let content = fs::read_to_string(file_path).await?;
+    for line in content.lines() {
+        let parts: Vec<&str> = line.split("::").collect();
+        result.push((parts[0].to_owned(), parts[1].parse::<usize>()?))
+    }
+
+    Ok(result)
 }
 
 pub async fn load_page_details(file_path: PathBuf) -> Result<SearchResult, Error> {
@@ -76,7 +91,7 @@ pub fn url_to_path(root_path: &str, url: &url::Url) -> PathBuf {
     let domain = url.host().unwrap().to_string();
 
     // Split things down by reverse domain
-    let mut domain_parts: Vec<&str> = domain.split(".").collect();
+    let mut domain_parts: Vec<&str> = domain.split('.').collect();
     domain_parts.reverse();
 
     let mut result = Path::new(root_path).join("pages");

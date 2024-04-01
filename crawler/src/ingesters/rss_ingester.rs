@@ -1,7 +1,7 @@
+use crate::error::Error;
 use bytes::Buf;
 use ceridwen::config::Config;
 use ceridwen::config::Ingester;
-use ceridwen::error::Error;
 use ceridwen::index;
 use ceridwen::index::Index;
 use ceridwen::page::Page;

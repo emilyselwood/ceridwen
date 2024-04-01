@@ -11,9 +11,9 @@ fn main() {
 
     let root_dir = ceridwen::system_root();
 
-    println!("Creating root dir: {}", root_dir.to_str().unwrap());
+    println!("Creating root dir: {:?}", root_dir);
 
-    let result = fs::create_dir_all(root_dir.to_path_buf());
+    let result = fs::create_dir_all(&root_dir);
     if result.is_err() {
         println!(
             "Could not create ceridwen directory at {:?}: {}",
@@ -26,7 +26,7 @@ fn main() {
     let config_path = config::Config::config_path();
     println!("Creating base config at {config_path}");
 
-    let new_config = config::Config::new();
+    let new_config = config::Config::default();
 
     // TODO: ask about any user configurable settings
 
@@ -44,6 +44,5 @@ fn main() {
     let index = Index::new(&index::index_dir());
     if index.is_err() {
         println!("Could not create index! {:?}", index.unwrap_err());
-        return;
     }
 }

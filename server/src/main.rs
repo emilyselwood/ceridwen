@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::env;
 use std::io;
 use std::path::PathBuf;
@@ -19,6 +20,7 @@ use ceridwen::index::SearchResult;
 use env_logger::Env;
 use log::debug;
 use log::info;
+use log::warn;
 use serde::Deserialize;
 use tera::Context;
 use tera::Tera;
@@ -78,6 +80,8 @@ async fn run_server() -> Result<(), Error> {
             .route("/css/{filename:.*\\.css}", web::get().to(css_host))
             .route("/scripts/{filename:.*\\.js}", web::get().to(script_host))
             .route("/fonts/{filename:.*\\.ttf}", web::get().to(fonts_host))
+            // favicon
+            .route("/favicon.ico", web::get().to(favicon))
             // Index page routes
             .route("/", web::get().to(index_page))
             .route("/index.html", web::get().to(index_page))
@@ -98,7 +102,7 @@ async fn image_host(req: HttpRequest) -> io::Result<NamedFile> {
     let full_path = root_path.join(path);
 
     debug!("trying to serve image {}", full_path.display());
-    Ok(NamedFile::open(full_path)?)
+    NamedFile::open(full_path)
 }
 
 async fn css_host(req: HttpRequest) -> io::Result<NamedFile> {
@@ -107,7 +111,7 @@ async fn css_host(req: HttpRequest) -> io::Result<NamedFile> {
     let full_path = root_path.join(path);
 
     debug!("trying to serve css {}", full_path.display());
-    Ok(NamedFile::open(full_path)?)
+    NamedFile::open(full_path)
 }
 
 async fn script_host(req: HttpRequest) -> io::Result<NamedFile> {
@@ -116,7 +120,7 @@ async fn script_host(req: HttpRequest) -> io::Result<NamedFile> {
     let full_path = root_path.join(path);
 
     debug!("trying to serve script {}", full_path.display());
-    Ok(NamedFile::open(full_path)?)
+    NamedFile::open(full_path)
 }
 
 async fn fonts_host(req: HttpRequest) -> io::Result<NamedFile> {
@@ -125,13 +129,26 @@ async fn fonts_host(req: HttpRequest) -> io::Result<NamedFile> {
     let full_path = root_path.join(path);
 
     debug!("trying to serve font {}", full_path.display());
-    Ok(NamedFile::open(full_path)?)
+    NamedFile::open(full_path)
 }
 
-async fn index_page(_req: HttpRequest) -> io::Result<NamedFile> {
-    let index_page_path: PathBuf = get_root_path("static/index.html");
-    debug!("trying to serve index page {}", index_page_path.display());
-    Ok(NamedFile::open(index_page_path)?)
+async fn favicon(_req: HttpRequest) -> io::Result<NamedFile> {
+    let favicon_path: PathBuf = get_root_path("static/img/logo-white.png");
+    debug!("trying to serve favicon {}", favicon_path.display());
+    NamedFile::open(favicon_path)
+}
+
+async fn index_page(
+    app_data: web::Data<AppData>,
+    _req: HttpRequest,
+) -> Result<HttpResponse, Error> {
+    let context = Context::new();
+
+    let page_text = app_data.templates.render("index.html", &context)?;
+
+    Ok(HttpResponse::Ok()
+        .content_type(ContentType::html())
+        .body(page_text))
 }
 
 fn get_root_path(path: &str) -> PathBuf {
@@ -194,20 +211,19 @@ fn load_templates() -> Result<Tera, Error> {
 
     tera.autoescape_on(vec![]);
 
-    let mut search_template = false;
+    let mut required_templates = HashSet::from(["index.html", "search.html", "header.html"]);
+
     info!("Loaded templates:");
     for template in tera.get_template_names() {
         info!("{}", template);
-        if template == "search.html" {
-            search_template = true;
-        }
+        required_templates.remove(template);
     }
-    // fall back to load the search template from a string if we don't have it already.
-    if !search_template {
-        tera.add_raw_template("search.html", SEARCH_PAGE_TEMPLATE)?;
+
+    // fall back to load the search and index template from a string if we don't have it already.
+    if !required_templates.is_empty() {
+        warn!("Missing required templates: {:?}", required_templates);
+        panic!("Missing required templates");
     }
 
     Ok(tera)
 }
-
-const SEARCH_PAGE_TEMPLATE: &str = include_str!("../resources/templates/search.html");

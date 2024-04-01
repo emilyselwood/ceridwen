@@ -1,5 +1,3 @@
-use std::num::ParseIntError;
-
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -11,12 +9,8 @@ pub enum Error {
     IndexDirDoesNotExist(String),
     #[error("Bad Index Record")]
     BadIndexRecord,
-
-    // crawler errors
-    #[error("Unknown ingester {0}")]
-    UnknownIngester(String),
-    #[error("Missing base url")]
-    MissingBaseUrl,
+    #[error("Could not open datafile: {0:?} because: {1:?}")]
+    BadFileName(String, std::io::Error),
 
     // url errors
     #[error("Missing host: {0}")]
@@ -26,25 +20,27 @@ pub enum Error {
     #[error("Page not found (404): {0}")]
     PageNotFound(String),
 
+    // File IO Errors
+    #[error("Incomplete write. This is bad, but potentially fixable. File: {0:?} byte index:{1}")]
+    IncompleteWrite(String, u64),
+
     // Std lib errors
     #[error("Could not parse int: {0:?}")]
-    ParseInt(ParseIntError),
+    ParseInt(std::num::ParseIntError),
     #[error("Could not parse url: {0:?}")]
     UrlParsing(url::ParseError),
     #[error("IO Error: {0:?}")]
     IOError(std::io::Error),
+    #[error("Invalid utf8 characters: {0:?}")]
+    EncodingError(std::string::FromUtf8Error),
 
     // dependencies errors
-    #[error("Could not join: {0:?}")]
-    TokioJoin(tokio::task::JoinError),
     #[error("Toml Deserialize Error: {0:?}")]
     TomlDeserializeError(toml::de::Error),
     #[error("Toml Serialize Error: {0:?}")]
     TomlSerializeError(toml::ser::Error),
-    #[error("Reqwest error: {0:?}")]
-    ReqwestError(reqwest::Error),
-    #[error("RSS error: {0:?}")]
-    RSSError(rss::Error),
+    #[error("Could not parse time: {0:?}")]
+    TimeParsing(time::error::Parse),
 }
 
 impl PartialEq for Error {
@@ -52,17 +48,14 @@ impl PartialEq for Error {
         match (self, other) {
             (Self::IndexDirAlreadyExists(l0), Self::IndexDirAlreadyExists(r0)) => l0 == r0,
             (Self::IndexDirDoesNotExist(l0), Self::IndexDirDoesNotExist(r0)) => l0 == r0,
-            (Self::UnknownIngester(l0), Self::UnknownIngester(r0)) => l0 == r0,
             (Self::MissingHost(l0), Self::MissingHost(r0)) => l0 == r0,
             (Self::PageNotFound(l0), Self::PageNotFound(r0)) => l0 == r0,
             (Self::ParseInt(l0), Self::ParseInt(r0)) => l0 == r0,
             (Self::UrlParsing(l0), Self::UrlParsing(r0)) => l0 == r0,
             (Self::IOError(_), Self::IOError(_)) => true,
-            (Self::TokioJoin(_), Self::TokioJoin(_)) => true,
             (Self::TomlDeserializeError(l0), Self::TomlDeserializeError(r0)) => l0 == r0,
             (Self::TomlSerializeError(l0), Self::TomlSerializeError(r0)) => l0 == r0,
-            (Self::ReqwestError(_), Self::ReqwestError(_)) => true,
-            (Self::RSSError(_), Self::RSSError(_)) => true,
+            (Self::TimeParsing(_), Self::TimeParsing(_)) => true,
             _ => core::mem::discriminant(self) == core::mem::discriminant(other),
         }
     }
@@ -86,8 +79,8 @@ impl From<toml::ser::Error> for Error {
     }
 }
 
-impl From<ParseIntError> for Error {
-    fn from(other: ParseIntError) -> Self {
+impl From<std::num::ParseIntError> for Error {
+    fn from(other: std::num::ParseIntError) -> Self {
         Error::ParseInt(other)
     }
 }
@@ -98,20 +91,14 @@ impl From<url::ParseError> for Error {
     }
 }
 
-impl From<tokio::task::JoinError> for Error {
-    fn from(other: tokio::task::JoinError) -> Self {
-        Error::TokioJoin(other)
+impl From<time::error::Parse> for Error {
+    fn from(other: time::error::Parse) -> Self {
+        Error::TimeParsing(other)
     }
 }
 
-impl From<reqwest::Error> for Error {
-    fn from(other: reqwest::Error) -> Self {
-        Error::ReqwestError(other)
-    }
-}
-
-impl From<rss::Error> for Error {
-    fn from(other: rss::Error) -> Self {
-        Error::RSSError(other)
+impl From<std::string::FromUtf8Error> for Error {
+    fn from(other: std::string::FromUtf8Error) -> Self {
+        Error::EncodingError(other)
     }
 }
