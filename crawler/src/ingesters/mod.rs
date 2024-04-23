@@ -1,6 +1,7 @@
 use crate::error::Error;
 use ceridwen::config::Config;
 use ceridwen::config::Ingester;
+use ceridwen::index_sled::Index;
 use log::info;
 use log::warn;
 
@@ -11,9 +12,9 @@ mod wikipedia;
 ///
 
 /// entry point and error logging wrapper
-pub async fn process_ingester(ingester_config: Ingester, config: Config) {
+pub async fn process_ingester(ingester_config: Ingester, config: Config, index: Index) {
     let name = ingester_config.name.clone();
-    let result = process(ingester_config, config).await;
+    let result = process(ingester_config, config, index).await;
     if result.is_err() {
         warn!(
             "Error processing ingester {}: {}",
@@ -24,7 +25,7 @@ pub async fn process_ingester(ingester_config: Ingester, config: Config) {
 }
 
 /// actual main processing function.
-async fn process(ingester_config: Ingester, mut config: Config) -> Result<(), Error> {
+async fn process(ingester_config: Ingester, mut config: Config, index: Index) -> Result<(), Error> {
     let next_run = ingester_config.last_update + ingester_config.update_interval;
 
     let name = ingester_config.name.clone();
@@ -40,9 +41,9 @@ async fn process(ingester_config: Ingester, mut config: Config) -> Result<(), Er
     let start_time = time::Instant::now();
 
     match ingester_config.ingester_type.as_str() {
-        "rss" => rss_ingester::process_rss(ingester_config, config.clone()).await,
-        "wikipedia" => wikipedia::process_wikipedia(ingester_config, config.clone()).await,
-        "spider" => process_spider(ingester_config, config.clone()).await,
+        "rss" => rss_ingester::process_rss(ingester_config, config.clone(), index).await,
+        "wikipedia" => wikipedia::process_wikipedia(ingester_config, config.clone(), index).await,
+        "spider" => process_spider(ingester_config, config.clone(), index).await,
         a => Err(Error::UnknownIngester(a.to_string())),
     }?;
 
@@ -61,6 +62,10 @@ async fn process(ingester_config: Ingester, mut config: Config) -> Result<(), Er
     Ok(())
 }
 
-async fn process_spider(_ingester_config: Ingester, _config: Config) -> Result<(), Error> {
+async fn process_spider(
+    _ingester_config: Ingester,
+    _config: Config,
+    _index: Index,
+) -> Result<(), Error> {
     todo!();
 }

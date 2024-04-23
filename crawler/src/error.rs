@@ -51,6 +51,14 @@ pub enum Error {
     TokioJoin(tokio::task::JoinError),
     #[error("Could not parse xml: {0:?}")]
     InvalidXML(quick_xml::Error),
+
+    // Log4rs errors
+    #[error("Could not set up logger: {0:?}")]
+    LogSetup(log::SetLoggerError),
+    #[error("Could not set up logger config: {0:?}")]
+    LogConfig(log4rs::config::runtime::ConfigErrors),
+    #[error("anyhow: {0:?}")]
+    Anyhow(anyhow::Error),
 }
 
 impl PartialEq for Error {
@@ -135,5 +143,23 @@ impl From<std::string::FromUtf8Error> for Error {
 impl From<quick_xml::Error> for Error {
     fn from(other: quick_xml::Error) -> Self {
         Error::InvalidXML(other)
+    }
+}
+
+impl From<log::SetLoggerError> for Error {
+    fn from(other: log::SetLoggerError) -> Self {
+        Error::LogSetup(other)
+    }
+}
+
+impl From<log4rs::config::runtime::ConfigErrors> for Error {
+    fn from(other: log4rs::config::runtime::ConfigErrors) -> Self {
+        Error::LogConfig(other)
+    }
+}
+
+impl From<anyhow::Error> for Error {
+    fn from(other: anyhow::Error) -> Self {
+        Error::Anyhow(other)
     }
 }

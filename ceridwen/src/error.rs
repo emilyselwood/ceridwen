@@ -41,6 +41,10 @@ pub enum Error {
     TomlSerializeError(toml::ser::Error),
     #[error("Could not parse time: {0:?}")]
     TimeParsing(time::error::Parse),
+    #[error("Could not format time: {0:?}")]
+    TimeFormatting(time::error::Error),
+    #[error("Could not do something with sled: {0:?}")]
+    SledError(sled::Error),
 }
 
 impl PartialEq for Error {
@@ -56,6 +60,8 @@ impl PartialEq for Error {
             (Self::TomlDeserializeError(l0), Self::TomlDeserializeError(r0)) => l0 == r0,
             (Self::TomlSerializeError(l0), Self::TomlSerializeError(r0)) => l0 == r0,
             (Self::TimeParsing(_), Self::TimeParsing(_)) => true,
+            (Self::TimeFormatting(_), Self::TimeFormatting(_)) => true,
+
             _ => core::mem::discriminant(self) == core::mem::discriminant(other),
         }
     }
@@ -97,8 +103,20 @@ impl From<time::error::Parse> for Error {
     }
 }
 
+impl From<time::error::Error> for Error {
+    fn from(other: time::error::Error) -> Self {
+        Error::TimeFormatting(other)
+    }
+}
+
 impl From<std::string::FromUtf8Error> for Error {
     fn from(other: std::string::FromUtf8Error) -> Self {
         Error::EncodingError(other)
+    }
+}
+
+impl From<sled::Error> for Error {
+    fn from(other: sled::Error) -> Self {
+        Error::SledError(other)
     }
 }

@@ -1,6 +1,7 @@
 
 [workspace]
 members = [
+    "admin",
     "ceridwen",
     "crawler",
     "init",

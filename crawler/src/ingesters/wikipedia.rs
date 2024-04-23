@@ -6,12 +6,14 @@ use bytes::Buf;
 use bzip2::read::MultiBzDecoder;
 use ceridwen::config::Config;
 use ceridwen::config::Ingester;
-use ceridwen::index::Index;
+use ceridwen::index_sled::Index;
 use ceridwen::page::Page;
 use ceridwen::temp_dir;
+use flume::Receiver;
 use log::debug;
 use log::warn;
 use quick_xml::events::Event;
+use tokio::task::JoinHandle;
 use url::Url;
 use crate::error::Error;
 use log::info;
@@ -19,7 +21,6 @@ use reqwest::Client;
 use rss::Channel;
 use time::format_description;
 use time::macros::format_description;
-use slugify::slugify;
 
 use crate::web_client;
 
@@ -29,15 +30,14 @@ const WIKIPEDIA_DUMP_URL: &str =
 const WIKIPEDIA_DUMP_RSS: &str = 
     "https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles-multistream.xml.bz2-rss.xml";
 
-const NUM_TASKS: usize = 1000;
-const WAIT_DURATION : std::time::Duration = std::time::Duration::new(5,0);
 
 pub(crate) async fn process_wikipedia(
     ingester_config: Ingester,
     config: Config,
+    index: Index,
 ) -> Result<(), Error> {
     let mut client = web_client::get_client(&config)?;
-
+    let num_tasks = config.crawler.workers;
     // Load up the rss file and see if there is a new file.
     let last_update = get_rss_date(&mut client).await?;
     info!("got {} as the last update time!", last_update);
@@ -50,7 +50,6 @@ pub(crate) async fn process_wikipedia(
     info!("Downloading wikipedia archive");
     let archive_file = download_archive(&client, &last_update).await?;
     info!("Download completed. {:?}", archive_file);
-    
 
     // Now to process the archive file...
 
@@ -60,39 +59,33 @@ pub(crate) async fn process_wikipedia(
     let mut xml_reader = quick_xml::Reader::from_reader(buf_reader);
     
     // spin out index creation into other threads.
-    let mut counter = NUM_TASKS;
-    let mut tasks = Vec::new();
-    while let Some(page) = read_page(&mut xml_reader)? {
-        tasks.push(tokio::spawn(process_page(config.clone(), page)));
+    // Flume, for channel and create a bunch of threads to do work.
 
-        counter -= 1;
-        // after spawning a batch wait for a lot of tasks to finish before starting more.
-        // We don't want to have too many tasks in flight at once.
-        if counter == 0 {
-            warn!("Starting clean up of completed tasks");
-            while tasks.len() > NUM_TASKS {
-                warn!("waiting for things to complete");
-                tokio::time::sleep(WAIT_DURATION).await;
-                let before = tasks.len();
-                let mut new_tasks = Vec::new();
-                for t in tasks.into_iter() {
-                    if t.is_finished() {
-                        drop(t);
-                    } else {
-                        new_tasks.push(t);
-                    }
-                }
-                tasks = new_tasks;
-                let after = tasks.len();
-                warn!("Before: {} after: {}", before, after);
-            }
-            counter = NUM_TASKS;
+    let (tx, rx) = flume::bounded(num_tasks);
+    let mut workers: Vec<JoinHandle<()>> = Vec::new();
+    info!("Starting {} page workers", config.crawler.workers);
+    for _worker in 0..config.crawler.workers {
+        workers.push(tokio::spawn(page_processor(config.clone(), index.clone(), rx.clone())))
+    }
+    info!("Starting page feed");
+    // Now load up the queue
+    while let Some(page) = read_page(&mut xml_reader)? {
+        let result = tx.send_async(page).await;
+        if let Err(error) = result {
+            warn!("Error sending page into channel: {:?}", error);
+            panic!("Could not send to channel!");
         }
     }
+    info!("Done reading pages... waiting for processors to complete");
+    // drop the sender so that the rx get closed eventually and everything slowly stops.
+    drop(tx);
 
-    for fut in tasks {
+    // Wait for the workers to return
+    for fut in workers {
         fut.await?;
     }
+
+    info!("wikipedia page processors complete");
 
     Ok(())
 }
@@ -132,22 +125,38 @@ async fn download_archive(client: &Client, update_date : &time::OffsetDateTime) 
     Ok(target_path)
 }
 
-async fn process_page(config: Config, page: Page) {
-    let title = page.title.clone();
-    info!("processing page: {title}");
-    let result = process_page_inner(config, page).await;
-    if let Err(error) = result {
-        warn!("Error Processing page {}: {}", title, error);
-        panic!("errored processing wikipedia page");
+async fn page_processor(config: Config, index:Index, rx: Receiver<Page>) {
+    while let Ok(page) = rx.clone().into_recv_async().await {
+        let start_time = time::Instant::now();
+        let title = page.title.clone();
+        info!("processing page: {title}");
+        
+        let result = process_page_inner(&config, page, &index).await;
+        if let Err(error) = result {
+            warn!("Error Processing page {}: {}", title, error);
+            panic!("errored processing wikipedia page");
+        }
+        info!("done processing page {}! took {}", title, start_time.elapsed());
     }
-    info!("done processing page!");
 }
 
-async fn process_page_inner(config: Config, page: Page) -> Result<(), Error> {
+// async fn process_page(config: Config, page: Page, index: Index) {
+//     let title = page.title.clone();
+//     info!("processing page: {title}");
+//     let start_time = time::Instant::now();
+//     let result = process_page_inner(config, page, index).await;
+//     if let Err(error) = result {
+//         warn!("Error Processing page {}: {}", title, error);
+//         panic!("errored processing wikipedia page");
+//     }
+//     info!("done processing page {}! took {}", title, start_time.elapsed());
+// }
+
+async fn process_page_inner(config: &Config, page: Page, index: &Index) -> Result<(), Error> {
 
     // filter out pages that are just redirects and 
     if page.content.starts_with("#REDIRECT") {
-        debug!("skipping as its a redirect page");
+        debug!("skipping {} as its a redirect page", page.url);
         Ok(())
     } else {
 
@@ -155,7 +164,6 @@ async fn process_page_inner(config: Config, page: Page) -> Result<(), Error> {
         let stripped_page = strip_page(&page);
 
         // info!("{}", &page.content);
-        let mut index = Index::load(&ceridwen::index::index_dir())?;
         match index.add_page(&stripped_page, config.crawler.min_update_interval).await {
             Ok(()) => Ok(()),
             Err(e) => {
@@ -163,7 +171,7 @@ async fn process_page_inner(config: Config, page: Page) -> Result<(), Error> {
                 warn!("{}", stripped_page.content);
                 Err(Error::Ceridwen(e))
             }
-        } 
+        }
     }
 }
 
@@ -237,7 +245,8 @@ fn read_page(xml: &mut quick_xml::Reader<BufReader<MultiBzDecoder<File>>>) -> Re
 
 
 fn create_url(title: &str) -> Result<Url, Error> {
-    let slug = slugify!(title, separator = "_");
+    // NOTE: this is not a true slugify operation. it only seems to worry about spaces. Brackets and capitalisation remain 
+    let slug = title.replace(' ', "_");
     Ok(Url::parse(&format!("https://en.wikipedia.org/wiki/{slug}"))?)
 }
 

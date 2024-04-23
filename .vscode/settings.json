@@ -3,10 +3,12 @@
         "actix",
         "autoescape",
         "ceridwen",
+        "conn",
         "Ingester",
         "ingesters",
         "ingestors",
         "reqwest",
+        "rusqlite",
         "Tera"
     ]
 }

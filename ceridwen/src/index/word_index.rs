@@ -44,7 +44,7 @@ pub fn word_to_path(root_dir: &str, word: &str) -> PathBuf {
 
 pub struct WordIndexEntry {
     pub url: String,
-    pub count: usize,
+    pub count: u64,
 }
 
 impl WordIndexEntry {
@@ -54,14 +54,14 @@ impl WordIndexEntry {
             return Err(Error::BadIndexRecord);
         }
 
-        let count = parts[1].parse::<usize>()?;
+        let count = parts[1].parse::<u64>()?;
         Ok(WordIndexEntry {
             url: parts[0].to_string(),
             count,
         })
     }
 
-    pub fn new(url: String, count: usize) -> Self {
+    pub fn new(url: String, count: u64) -> Self {
         WordIndexEntry { url, count }
     }
 

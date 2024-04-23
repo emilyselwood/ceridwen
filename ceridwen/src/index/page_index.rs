@@ -13,7 +13,7 @@ use crate::error::Error;
 use crate::index::SearchResult;
 
 /* Write the entire list of words to disk for this page. All at once, no appending. */
-pub async fn write_page_words(file_path: PathBuf, words: &[(String, usize)]) -> Result<(), Error> {
+pub async fn write_page_words(file_path: PathBuf, words: &[(String, u64)]) -> Result<(), Error> {
     if file_path.exists() {
         warn!("Index file {:?} already exists. Overwriting it.", file_path)
     }

@@ -14,9 +14,8 @@ use actix_web::HttpRequest;
 use actix_web::HttpResponse;
 use actix_web::HttpServer;
 use ceridwen::config::Config;
-use ceridwen::index;
-use ceridwen::index::Index;
-use ceridwen::index::SearchResult;
+use ceridwen::index_sled::Index;
+use ceridwen::search_result::SearchResult;
 use env_logger::Env;
 use log::debug;
 use log::info;
@@ -194,7 +193,7 @@ async fn get_search(
 }
 
 async fn get_search_results(q: &str) -> Result<Vec<SearchResult>, Error> {
-    let index = Index::load(&index::index_dir())?;
+    let index = Index::load().await?;
 
     let results = index.search(q).await?;
     Ok(results)

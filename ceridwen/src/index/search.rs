@@ -21,7 +21,7 @@ pub async fn search(root_dir: &str, search_string: &str) -> Result<Vec<SearchRes
     }
 
     // count number of instances of those urls
-    let mut url_counts: HashMap<String, usize> = HashMap::new();
+    let mut url_counts: HashMap<String, u64> = HashMap::new();
     for entry in pages.iter() {
         *url_counts.entry(entry.url.clone()).or_insert(0) += entry.count
     }

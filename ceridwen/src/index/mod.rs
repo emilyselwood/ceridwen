@@ -1,17 +1,18 @@
-use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
 use log::debug;
 use log::info;
-use serde::Deserialize;
-use serde::Serialize;
 
 use crate::error::Error;
 use crate::index::word_index::WordIndexEntry;
 use crate::page::Page;
+use crate::search_result::SearchResult;
 use crate::system_root;
+use crate::text_tools::count_words;
+use crate::text_tools::filter;
+use crate::text_tools::tokenise;
 
 mod page_index;
 mod search;
@@ -129,7 +130,7 @@ impl Index {
         &mut self,
         page: &Page,
         word: &str,
-        count: usize,
+        count: u64,
     ) -> Result<(), Error> {
         let index_file = word_index::word_to_path(&self.root_dir, word);
 
@@ -142,7 +143,7 @@ impl Index {
     async fn add_to_page_index(
         &mut self,
         page: &Page,
-        words: &[(String, usize)],
+        words: &[(String, u64)],
     ) -> Result<(), Error> {
         let index_file_path = page_index::url_to_words_path(&self.root_dir, &page.url);
         page_index::write_page_words(index_file_path, words).await?;
@@ -162,53 +163,4 @@ impl Index {
 
         Ok(Some(page_file.last_index))
     }
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct SearchResult {
-    pub url: String,
-    pub title: String,
-    pub description: String,
-    pub last_index: time::OffsetDateTime,
-}
-
-impl From<&Page> for SearchResult {
-    fn from(value: &Page) -> Self {
-        SearchResult {
-            url: value.url.to_string(),
-            title: value.title.clone(),
-            description: value.content.chars().take(250).collect(),
-            last_index: time::OffsetDateTime::now_utc(),
-        }
-    }
-}
-
-fn tokenise(text: &str) -> Vec<String> {
-    text.split_whitespace()
-        .map(str::to_lowercase)
-        .map(|w| {
-            w.trim().replace(
-                &[
-                    '(', ')', ',', '\"', '.', ';', ':', '\'', '?', '<', '>', '\\', '/', '*', '{',
-                    '}', '|', '#', '=',
-                ][..],
-                "",
-            )
-        })
-        .collect()
-}
-
-fn filter(words: Vec<String>) -> Vec<String> {
-    // TODO: implement stop word filters
-    words.into_iter().filter(|s| !s.is_empty()).collect()
-}
-
-fn count_words(words: Vec<String>) -> Vec<(String, usize)> {
-    let mut result: HashMap<&String, usize> = HashMap::new();
-
-    for word in words.iter() {
-        *result.entry(word).or_insert(0) += 1;
-    }
-
-    result.iter().map(|(k, v)| ((*k).clone(), *v)).collect()
 }

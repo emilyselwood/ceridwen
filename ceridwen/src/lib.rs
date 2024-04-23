@@ -7,8 +7,11 @@ pub mod config;
 pub mod data_file;
 pub mod error;
 pub mod index;
+pub mod index_sled;
 pub mod page;
 pub mod percentage;
+pub mod search_result;
+pub mod text_tools;
 
 pub fn system_root() -> PathBuf {
     let home_option = home::home_dir();

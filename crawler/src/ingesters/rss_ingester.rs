@@ -2,8 +2,7 @@ use crate::error::Error;
 use bytes::Buf;
 use ceridwen::config::Config;
 use ceridwen::config::Ingester;
-use ceridwen::index;
-use ceridwen::index::Index;
+use ceridwen::index_sled::Index;
 use ceridwen::page::Page;
 use log::info;
 use rss::Channel;
@@ -12,7 +11,11 @@ use url::Url;
 use crate::robots_text;
 use crate::web_client;
 
-pub(crate) async fn process_rss(ingester_config: Ingester, config: Config) -> Result<(), Error> {
+pub(crate) async fn process_rss(
+    ingester_config: Ingester,
+    config: Config,
+    index: Index,
+) -> Result<(), Error> {
     let base_url = match ingester_config.base_url {
         Some(u) => u,
         None => return Err(Error::MissingBaseUrl),
@@ -35,8 +38,6 @@ pub(crate) async fn process_rss(ingester_config: Ingester, config: Config) -> Re
 
     let rss_bytes = web_client::get_url(&client, &target_url).await?;
     let channel = Channel::read_from(rss_bytes.reader())?;
-
-    let mut index = Index::load(&index::index_dir())?;
 
     for item in channel.items().iter() {
         info!(
