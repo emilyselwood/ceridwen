@@ -4,29 +4,15 @@
 * Find and set up example sites
     * Something to spider
 
-## Init process
-
-* Prevent overwriting unless flag is passed
-
-## Admin tool
-
-* Refactor init to be a sub tool of admin
-* Vacuum index
-* check index (look for records that look partially deleted)
-* CRUD ingester configuration
-
 ## Index
-
-* Consider using an sqlite3 database for index
-* Work out query list
-* Locks on directories/files to prevent overwriting
 
 ## Crawler
 
-* lock file to prevent multiple crawlers running at once
+* Schedule runs, on start, and once per day at 3am
+* get config when starting run
+* Stats recording
 * cache robots.txt files
 * Ingesters
-    * Wikipedia
     * rust docs
     * python docs
     * crates.io? 
@@ -45,30 +31,19 @@
 * Admin interface
     * Stats
     * configuration editing
+        * Adding sites
+* Admin API
 
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! DONE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-* Set up different workspaces - make sure it works with actix web and tokio (https://doc.rust-lang.org/book/ch14-03-cargo-workspaces.html)
-    * Init (bin)
-    * Crawler (bin)
-    * Server (bin)
-    * Ceridwen (lib)
-
+* Refactor everything into one process.
 * Find and set up example sites
     * Something with rss and robots.txt
 
-* Refactor errors in crawler and lib
-
 * Logo
-
-## init
-
-* Create folders and places to put stuff. ($HOME equivalent)
-* Config file loading
-* Config file saving
 
 ## Server
 
@@ -92,5 +67,7 @@
 * Engine
 * Define useragent
 * Read robots.txt files
+* lock file to prevent multiple crawlers running at once
 * Ingesters
     * RSS feed
+* Wikipedia
