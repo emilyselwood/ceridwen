@@ -1,4 +1,5 @@
 use log::info;
+use std::time::Instant;
 
 use crate::config::Config;
 use crate::error::Error;
@@ -12,7 +13,7 @@ pub async fn crawler_main() -> Result<(), Error> {
     info!("Crawler starting. Loading config");
     let config = Config::load()?;
 
-    let process_start = time::Instant::now();
+    let process_start = Instant::now();
 
     let index = Index::load().await?;
 
@@ -33,7 +34,7 @@ pub async fn crawler_main() -> Result<(), Error> {
     }
 
     let process_end = process_start.elapsed();
-    info!("processing took: {}", process_end);
+    info!("processing took: {:?}", process_end);
 
     Ok(())
 }

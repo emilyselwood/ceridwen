@@ -15,7 +15,16 @@ This means that:
 
 * The web front end doesn't need to scale. We absolutely do not support 100s of users. Never mind thousands. It is a personal search engine.
 * We don't need to massively optimise the web front end because it will be hosted the local network. Prefer readable over small.
-* This means we do not want to design for scale out. A home server is not going to be a massive cluster. We do not expect this to run on more than one machine.
+* We do not want to design for scale out. A home server is not going to be a massive cluster. We do not expect this to run on more than one machine.
+
+## Prerequisites
+
+To compile some of the dependencies we need a system implementation of libssl.
+
+On debian and similar:
+```
+sudo apt install libssl-dev
+```
 
 ## Installing
 
@@ -23,20 +32,13 @@ TODO: once release builds are defined document how to install here.
 
 ## Running
 
-TODO: document setup process and how to run.
+The first time you run ceridwen it will set up a default configuration. You can change this later.
+
+`cargo run`
 
 ## Building
 
-This project uses workspaces to allow for multiple mains that don't interact with each other. This is needed because of the actix_web based server application which has it's own main function generation that doesn't play well with others.
-
-The project is split into four parts. Three commands and one library
-
-* ceridwen - the library with shared code.
-* init - a tool to set up the config and index files as needed.
-* crawler - the indexing tool, should be run periodically
-* server - the web server that allows you to search
-
-Build using cargo in the root of the project (IE: where this read me file is.) This will automatically build all the workspaces
+The project consists of a single application that is designed to run as a service type application. It runs the web server and runs the crawler in the background.
 
 ```
 cargo build
@@ -48,12 +50,10 @@ Test using cargo too, also here in the root of the project
 cargo test
 ```
 
-To run the individual parts of the project we also use cargo and need to specify the workspace with the `-p` argument
+To run the server in development use
 
 ```
-cargo run -p ceridwen-init
-cargo run -p ceridwen-crawler
-cargo run -p ceridwen-server
+cargo run
 ```
 
 TODO: document how to build a release package
@@ -71,6 +71,6 @@ User-agent: ceridwen-crawler
 Disallow: /something/you/do/not/want/indexed/
 ```
 
-`/` is supported as a Disallow rule so you can block all instances of ceridwen from indexing your site if you wish. We also support the wild card (`*`) user agent and will respect that, if `ceridwen-crawler` is not specified separately. 
+`/` is supported as a Disallow rule so you can block all instances of ceridwen from indexing your site if you wish. We also support the wild card (`*`) user agent and will respect that, if `ceridwen-crawler` is not specified separately.
 
 Please also note that unlike other search engines there is no central host of Ceridwen, if an instance of Ceridwen is misbehaving please contact the instance owner (or just block them at your firewall)

@@ -4,6 +4,7 @@ use crate::error::Error;
 use crate::index_sled::Index;
 use log::info;
 use log::warn;
+use std::time::Instant;
 
 mod rss_ingester;
 mod wikipedia;
@@ -38,7 +39,7 @@ async fn process(ingester_config: Ingester, mut config: Config, index: Index) ->
         return Ok(());
     }
 
-    let start_time = time::Instant::now();
+    let start_time = Instant::now();
 
     match ingester_config.ingester_type.as_str() {
         "rss" => rss_ingester::process_rss(ingester_config, config.clone(), index).await,
@@ -57,7 +58,7 @@ async fn process(ingester_config: Ingester, mut config: Config, index: Index) ->
     config.save()?;
 
     let duration = start_time.elapsed();
-    info!("Processing {} took {}", &name, duration);
+    info!("Processing {} took {:?}", &name, duration);
 
     Ok(())
 }

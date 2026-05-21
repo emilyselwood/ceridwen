@@ -129,7 +129,9 @@ impl Index {
 
         let word_counts = count_words(words);
 
-        self.store_words(page_id, word_counts)
+        let result = self.store_words(page_id, word_counts);
+
+        result
     }
 
     pub async fn last_index_time(

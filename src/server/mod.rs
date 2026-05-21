@@ -64,8 +64,7 @@ pub fn run_server(config: Config) -> Result<Server, Error> {
     })
     .workers(config.server.workers)
     // TODO: figure out what this address should be so only the local subnet can access it. Not just local host
-    .bind(("127.0.0.1", config.server.port))
-    .expect("Could not bind server port")
+    .bind(("127.0.0.1", config.server.port))?
     .run())
 }
 
@@ -115,7 +114,8 @@ async fn index_page(
     app_data: web::Data<AppData>,
     _req: HttpRequest,
 ) -> Result<HttpResponse, Error> {
-    let context = Context::new();
+    let mut context = Context::new();
+    context.insert("search_term", "");
 
     let page_text = app_data.templates.render("index.html", &context)?;
 
@@ -142,6 +142,7 @@ struct SearchParams {
 #[post("/search")]
 async fn post_search(info: web::Query<SearchParams>) -> Result<HttpResponse, Error> {
     info!("post search!!! {}", info.q);
+    // TODO: Paging
     let results = get_search_results(&info.q).await?;
     Ok(HttpResponse::Ok().json(results))
 }

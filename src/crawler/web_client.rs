@@ -11,6 +11,7 @@ use log::debug;
 use log::warn;
 use reqwest::Client;
 use reqwest::StatusCode;
+use std::time::Instant;
 use tokio::fs;
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
@@ -27,7 +28,7 @@ pub fn get_client(_config: &Config) -> Result<Client, Error> {
 
 pub async fn get(client: &Client, url: &str) -> Result<Bytes, Error> {
     debug!("Making request for {}", url);
-    let start_time = time::Instant::now();
+    let start_time = Instant::now();
 
     let response = client.execute(client.get(url).build()?).await?;
 
@@ -40,7 +41,7 @@ pub async fn get(client: &Client, url: &str) -> Result<Bytes, Error> {
 
     let file_bytes = response.bytes().await?;
     debug!(
-        "Response size: {} for {} in {}",
+        "Response size: {} for {} in {:?}",
         file_bytes.len(),
         url,
         start_time.elapsed()
@@ -63,7 +64,7 @@ pub async fn get_to_file(client: &Client, url: &str, target_path: &Path) -> Resu
         .open(target_path)
         .await?;
 
-    let download_start = time::Instant::now();
+    let download_start = Instant::now();
 
     let mut response = client.get(url).send().await?;
 
@@ -112,7 +113,7 @@ pub async fn get_to_file(client: &Client, url: &str, target_path: &Path) -> Resu
     }
 
     let download_duration = download_start.elapsed();
-    debug!("Download took: {}", download_duration);
+    debug!("Download took: {:?}", download_duration);
 
     Ok(())
 }

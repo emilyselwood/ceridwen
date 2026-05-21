@@ -32,6 +32,7 @@ h1 img.logoImage {
 
 div.resultsWrapper {
     max-width: 800px;
+    padding-top: 5px;
 }
 
 div.searchResult {
@@ -40,4 +41,8 @@ div.searchResult {
 
 div.searchResultTitle {
     font-weight: 700;
+}
+
+div.searchBox {
+    padding: 5px;
 }
