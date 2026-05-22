@@ -49,6 +49,8 @@ pub enum Error {
     TimeParsing(#[from] time::error::Parse),
     #[error("Could not format time: {0:?}")]
     TimeFormatting(#[from] time::error::Format),
+    #[error("Could not parse time: {0:?}")]
+    ChronoParse(#[from] chrono::ParseError),
     #[error("Could not do something with sled: {0:?}")]
     SledError(#[from] sled::Error),
     #[error("Reqwest error: {0:?}")]
@@ -71,6 +73,12 @@ pub enum Error {
     LogLevel(#[from] log::ParseLevelError),
     #[error("anyhow: {0:?}")]
     Anyhow(#[from] anyhow::Error),
+
+    // Diesel (Database) errors
+    #[error("could not connect to db: {0:?}")]
+    DbConnection(#[from] diesel::ConnectionError),
+    #[error("could not query db: {0:?}")]
+    DbQuery(#[from] diesel::result::Error),
 }
 
 impl PartialEq for Error {

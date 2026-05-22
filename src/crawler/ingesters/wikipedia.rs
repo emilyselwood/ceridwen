@@ -6,12 +6,14 @@ use crate::config::Config;
 use crate::config::Ingester;
 use crate::crawler::web_client;
 use crate::data::Page;
-use crate::index_sled::Index;
+use crate::error::Error;
+use crate::index::postgres::PostgresIndex;
+use crate::index::Index;
 use crate::utils::temp_dir;
 
-use crate::error::Error;
 use bytes::Buf;
 use bzip2::read::MultiBzDecoder;
+use chrono::Utc;
 use flume::Receiver;
 use log::debug;
 use log::info;
@@ -19,9 +21,6 @@ use log::warn;
 use quick_xml::events::Event;
 use reqwest::Client;
 use rss::Channel;
-use std::time::Instant;
-use time::format_description;
-use time::macros::format_description;
 use tokio::task::JoinHandle;
 use url::Url;
 
@@ -31,10 +30,10 @@ const WIKIPEDIA_DUMP_URL: &str =
 const WIKIPEDIA_DUMP_RSS: &str =
     "https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles-multistream.xml.bz2-rss.xml";
 
-pub(crate) async fn process_wikipedia(
+pub(crate) async fn process_wikipedia<A, T: Index<A>>(
     ingester_config: Ingester,
     config: Config,
-    index: Index,
+    _index: &mut T,
 ) -> Result<(), Error> {
     let mut client = web_client::get_client(&config)?;
     // set the queue size to double our workers so even if all of them finish at the same instant there will be enough
@@ -70,11 +69,7 @@ pub(crate) async fn process_wikipedia(
     let mut workers: Vec<JoinHandle<()>> = Vec::new();
     info!("Starting {} page workers", config.crawler.workers);
     for _worker in 0..config.crawler.workers {
-        workers.push(tokio::spawn(page_processor(
-            config.clone(),
-            index.clone(),
-            rx.clone(),
-        )))
+        workers.push(tokio::spawn(page_processor(config.clone(), rx.clone())))
     }
     info!("Starting page feed");
     // Now load up the queue
@@ -99,7 +94,7 @@ pub(crate) async fn process_wikipedia(
     Ok(())
 }
 
-async fn get_rss_date(client: &mut Client) -> Result<time::OffsetDateTime, Error> {
+async fn get_rss_date(client: &mut Client) -> Result<chrono::DateTime<Utc>, Error> {
     let rss_bytes = web_client::get(client, WIKIPEDIA_DUMP_RSS).await?;
     let channel = Channel::read_from(rss_bytes.reader())?;
 
@@ -110,21 +105,16 @@ async fn get_rss_date(client: &mut Client) -> Result<time::OffsetDateTime, Error
     }
 
     // expected format: Fri, 02 Feb 2024 09:03:51 GMT
-    Ok(time::OffsetDateTime::parse(
-        date_string.unwrap(),
-        &format_description::well_known::Rfc2822,
-    )?)
+    Ok(chrono::DateTime::parse_from_rfc2822(date_string.unwrap())?.to_utc())
 }
 
 async fn download_archive(
     client: &Client,
-    update_date: &time::OffsetDateTime,
+    update_date: &chrono::DateTime<Utc>,
 ) -> Result<PathBuf, Error> {
     let file_name = format!(
         "enwiki-latest-{}.xml.bz2",
-        update_date.format(format_description!(
-            "[year]_[month]_[day]_[hour]_[minute]_[second]"
-        ))?
+        update_date.format("%Y_%m_%d_%H_%M_%S")
     );
 
     let target_path = temp_dir().join("wikipedia").join(file_name);
@@ -137,13 +127,15 @@ async fn download_archive(
     Ok(target_path)
 }
 
-async fn page_processor(config: Config, index: Index, rx: Receiver<Page>) {
+async fn page_processor(config: Config, rx: Receiver<Page>) {
+    // TODO: this shouldn't be calling postgres directly - it shouldn't need to know the type.
+    let index = &mut PostgresIndex::connect(&config).expect("Could not connect to db");
     while let Ok(page) = rx.clone().into_recv_async().await {
-        let start_time = Instant::now();
+        let start_time = Utc::now();
         let title = page.title.clone();
         info!("processing page: {title}");
 
-        let result = process_page_inner(&config, &page, &index).await;
+        let result = process_page_inner(&config, &page, index).await;
         if let Err(error) = result {
             warn!("Error Processing page {}: {}", title, error);
             panic!("errored processing wikipedia page");
@@ -154,12 +146,16 @@ async fn page_processor(config: Config, index: Index, rx: Receiver<Page>) {
         info!(
             "done processing page {}! took {:?}",
             title,
-            start_time.elapsed()
+            Utc::now() - start_time
         );
     }
 }
 
-async fn process_page_inner(config: &Config, page: &Page, index: &Index) -> Result<(), Error> {
+async fn process_page_inner<A, T: Index<A>>(
+    config: &Config,
+    page: &Page,
+    index: &mut T,
+) -> Result<(), Error> {
     // filter out pages that are just redirects or deletion arguments
     if page.content.starts_with("#REDIRECT") {
         debug!("skipping {} as its a redirect page", page.url);
@@ -173,7 +169,7 @@ async fn process_page_inner(config: &Config, page: &Page, index: &Index) -> Resu
 
         // info!("{}", &page.content);
         match index
-            .add_page(&stripped_page, config.crawler.min_update_interval)
+            .add_page(&stripped_page, &config.crawler.min_update_interval)
             .await
         {
             Ok(()) => Ok(()),

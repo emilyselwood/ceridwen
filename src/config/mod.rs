@@ -1,9 +1,9 @@
+use chrono::Utc;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use time;
 use toml;
 
 use crate::error::Error;
@@ -15,16 +15,17 @@ pub struct Config {
     pub log_level: String,
     pub server: Server,
     pub crawler: Crawler,
-    pub last_update: time::OffsetDateTime,
+    pub database: Database,
+    pub last_update: chrono::DateTime<Utc>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Ingester {
     pub name: String,
     pub ingester_type: String,
-    pub update_interval: time::Duration,
+    pub update_interval: chrono::Duration,
     pub base_url: Option<String>,
-    pub last_update: time::OffsetDateTime,
+    pub last_update: chrono::DateTime<Utc>,
     pub options: HashMap<String, String>,
 }
 
@@ -44,7 +45,12 @@ pub struct Crawler {
     pub workers: usize,
 
     /// Minimum amount of time before the crawler will go back to a page to check for changes.
-    pub min_update_interval: time::Duration,
+    pub min_update_interval: chrono::Duration,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Database {
+    pub url: String,
 }
 
 impl Config {
@@ -70,7 +76,6 @@ impl Config {
             Err(err) => {
                 // Can't log here as we need the config to set up the loggers so it very likely won't work.
                 println!("Could not open config file at {:?}: {}", &config_path, err);
-                println!("You may need to run 'ceridwen-init'.");
                 return Err(Error::from(err));
             }
         };
@@ -97,9 +102,9 @@ impl Default for Config {
                 Ingester {
                     name: "parsecsreach".to_string(),
                     ingester_type: "rss".to_string(),
-                    update_interval: time::Duration::days(7),
+                    update_interval: chrono::Duration::days(7),
                     base_url: Some("https://parsecsreach.org/index.xml".to_string()),
-                    last_update: time::OffsetDateTime::now_utc() - time::Duration::days(7),
+                    last_update: Utc::now() - chrono::Duration::days(7),
                     options: HashMap::new(),
                 },
                 // A test ingester for an rss feed that has a robots.txt file
@@ -114,9 +119,9 @@ impl Default for Config {
                 Ingester {
                     name: "wikipedia".to_string(),
                     ingester_type: "wikipedia".to_string(),
-                    update_interval: time::Duration::days(7),
+                    update_interval: chrono::Duration::days(7),
                     base_url: None,
-                    last_update: time::OffsetDateTime::now_utc() - time::Duration::days(90),
+                    last_update: Utc::now() - chrono::Duration::days(90),
                     options: HashMap::new(),
                 },
             ],
@@ -127,9 +132,12 @@ impl Default for Config {
             },
             crawler: Crawler {
                 workers: 16,
-                min_update_interval: time::Duration::days(1),
+                min_update_interval: chrono::Duration::days(1),
             },
-            last_update: time::OffsetDateTime::now_utc() - time::Duration::days(90),
+            database: Database {
+                url: "postgresql://postgres:postgres@localhost:5432/ceridwen".to_string(),
+            },
+            last_update: Utc::now() - chrono::Duration::days(90),
         }
     }
 }

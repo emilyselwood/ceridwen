@@ -3,7 +3,7 @@ pub mod crawler;
 pub mod data;
 pub mod error;
 pub mod index;
-pub mod index_sled;
+//pub mod index_sled;
 pub mod server;
 pub mod utils;
 

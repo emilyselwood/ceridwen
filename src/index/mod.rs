@@ -1,5 +1,5 @@
+use chrono::Utc;
 use log::{debug, info};
-use sled::IVec;
 
 use crate::{
     config::Config,
@@ -8,36 +8,34 @@ use crate::{
     utils::text_tools::{count_words, filter, tokenise},
 };
 
-pub trait Index {
-    fn connect(config: &Config) -> Self;
+pub mod postgres;
 
-    fn search(&self, search_string: &str) -> Result<Vec<SearchResult>, Error>;
+pub trait Index<ID> {
+    fn connect(config: &Config) -> Result<Self, Error>
+    where
+        Self: std::marker::Sized;
 
-    fn last_index_time(
-        &self,
-        page: &Page,
-    ) -> impl std::future::Future<Output = Result<Option<time::OffsetDateTime>, Error>>;
+    fn search(&mut self, search_string: &str) -> Result<Vec<SearchResult>, Error>;
 
-    fn look_up_page(&self, page: &Page) -> Result<Option<(IVec, SearchResult)>, Error>;
+    fn look_up_page(&mut self, page: &Page) -> Result<Option<(ID, SearchResult)>, Error>;
 
-    fn lookup_id(&self, id: u64) -> Result<Option<SearchResult>, Error>;
+    fn lookup_id(&mut self, id: ID) -> Result<Option<SearchResult>, Error>;
 
-    fn store_page(&self, page: &Page) -> Result<(IVec, SearchResult), Error>;
+    fn store_page(&mut self, page: &Page) -> Result<(ID, SearchResult), Error>;
 
-    fn store_words(&self, page_id: IVec, words: Vec<(String, u64)>) -> Result<(), Error>;
+    fn store_words(&mut self, page_id: ID, words: Vec<(String, u64)>) -> Result<(), Error>;
 
     fn add_page(
-        &self,
+        &mut self,
         page: &Page,
-        min_update_interval: &time::Duration,
+        min_update_interval: &chrono::Duration,
     ) -> impl std::future::Future<Output = Result<(), Error>> {
         async {
             // check if we have the page already, and if its old enough to need an update
             let existing_result = self.look_up_page(page)?;
 
             let (page_id, _page_result) = if let Some((id, search_result)) = existing_result {
-                if search_result.last_index + *min_update_interval > time::OffsetDateTime::now_utc()
-                {
+                if search_result.last_index + *min_update_interval > Utc::now() {
                     info!(
                         "Last indexed {} at {} its too soon to do it again.",
                         page.url, search_result.last_index

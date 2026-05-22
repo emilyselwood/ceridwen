@@ -1,3 +1,4 @@
+use chrono::Utc;
 use serde::Deserialize;
 use serde::Serialize;
 use sled::IVec;
@@ -15,7 +16,7 @@ pub struct SearchResult {
     pub url: String,
     pub title: String,
     pub description: String,
-    pub last_index: time::OffsetDateTime,
+    pub last_index: chrono::DateTime<Utc>,
 }
 
 impl From<&Page> for SearchResult {
@@ -24,7 +25,7 @@ impl From<&Page> for SearchResult {
             url: value.url.to_string(),
             title: value.title.clone(),
             description: value.content.chars().take(250).collect(),
-            last_index: time::OffsetDateTime::now_utc(),
+            last_index: Utc::now(),
         }
     }
 }

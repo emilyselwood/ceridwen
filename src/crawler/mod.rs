@@ -1,9 +1,8 @@
+use chrono::Utc;
 use log::info;
-use std::time::Instant;
 
 use crate::config::Config;
 use crate::error::Error;
-use crate::index_sled::Index;
 
 pub mod ingesters;
 pub mod robots_text;
@@ -13,9 +12,7 @@ pub async fn crawler_main() -> Result<(), Error> {
     info!("Crawler starting. Loading config");
     let config = Config::load()?;
 
-    let process_start = Instant::now();
-
-    let index = Index::load().await?;
+    let process_start = Utc::now();
 
     // set up crawler engine...
     // build list of processors to handle.
@@ -25,7 +22,6 @@ pub async fn crawler_main() -> Result<(), Error> {
         tasks.push(tokio::spawn(ingesters::process_ingester(
             ingester.clone(),
             config.clone(),
-            index.clone(),
         )))
     }
 
@@ -33,7 +29,7 @@ pub async fn crawler_main() -> Result<(), Error> {
         fut.await?;
     }
 
-    let process_end = process_start.elapsed();
+    let process_end = Utc::now() - process_start;
     info!("processing took: {:?}", process_end);
 
     Ok(())

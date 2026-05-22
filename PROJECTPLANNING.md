@@ -1,5 +1,10 @@
 # Task List and Major themes
 
+* Document how to set up the system
+* Get postgres working.
+* Split into sub processes again...
+* Rebuild ceridwen init
+* Rebuild ceridwen index
 * Release builds and packages
 * Find and set up example sites
     * Something to spider

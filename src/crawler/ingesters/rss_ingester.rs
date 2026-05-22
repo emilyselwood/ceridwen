@@ -2,7 +2,7 @@ use crate::config::Config;
 use crate::config::Ingester;
 use crate::data::Page;
 use crate::error::Error;
-use crate::index_sled::Index;
+use crate::index::Index;
 
 use bytes::Buf;
 use log::info;
@@ -12,10 +12,10 @@ use url::Url;
 use crate::crawler::robots_text;
 use crate::crawler::web_client;
 
-pub(crate) async fn process_rss(
+pub(crate) async fn process_rss<A, T: Index<A>>(
     ingester_config: Ingester,
     config: Config,
-    index: Index,
+    index: &mut T,
 ) -> Result<(), Error> {
     let base_url = match ingester_config.base_url {
         Some(u) => u,
@@ -68,7 +68,7 @@ pub(crate) async fn process_rss(
 
         // add page to the index
         index
-            .add_page(&page, ingester_config.update_interval)
+            .add_page(&page, &ingester_config.update_interval)
             .await?;
     }
 

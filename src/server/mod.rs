@@ -5,7 +5,9 @@ use std::path::PathBuf;
 
 use crate::config::Config;
 use crate::data::SearchResult;
-use crate::index_sled::Index;
+use crate::index::postgres::PostgresIndex;
+use crate::index::Index;
+
 use actix_files::NamedFile;
 use actix_web::dev::Server;
 use actix_web::get;
@@ -27,7 +29,7 @@ use tera::Tera;
 use crate::error::Error;
 
 pub struct AppData {
-    _config: Config,
+    config: Config,
     templates: Tera,
 }
 
@@ -35,7 +37,7 @@ pub fn run_server(config: Config) -> Result<Server, Error> {
     info!("Server starting.");
 
     let app_data = AppData {
-        _config: config.clone(),
+        config: config.clone(),
         templates: load_templates()?,
     };
 
@@ -140,10 +142,13 @@ struct SearchParams {
 }
 
 #[post("/search")]
-async fn post_search(info: web::Query<SearchParams>) -> Result<HttpResponse, Error> {
+async fn post_search(
+    app_data: web::Data<AppData>,
+    info: web::Query<SearchParams>,
+) -> Result<HttpResponse, Error> {
     info!("post search!!! {}", info.q);
     // TODO: Paging
-    let results = get_search_results(&info.q).await?;
+    let results = get_search_results(&info.q, &app_data.config).await?;
     Ok(HttpResponse::Ok().json(results))
 }
 
@@ -153,7 +158,7 @@ async fn get_search(
     info: web::Query<SearchParams>,
 ) -> Result<HttpResponse, Error> {
     info!("get search!!! {}", info.q);
-    let results = get_search_results(&info.q).await?;
+    let results = get_search_results(&info.q, &app_data.config).await?;
 
     // now to render the search results page
     let mut context = Context::new();
@@ -167,10 +172,10 @@ async fn get_search(
         .body(page_text))
 }
 
-async fn get_search_results(q: &str) -> Result<Vec<SearchResult>, Error> {
-    let index = Index::load().await?;
+async fn get_search_results(q: &str, config: &Config) -> Result<Vec<SearchResult>, Error> {
+    let mut index = PostgresIndex::connect(config)?;
 
-    let results = index.search(q).await?;
+    let results = index.search(q)?;
     Ok(results)
 }
 
