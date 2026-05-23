@@ -51,8 +51,6 @@ pub enum Error {
     TimeFormatting(#[from] time::error::Format),
     #[error("Could not parse time: {0:?}")]
     ChronoParse(#[from] chrono::ParseError),
-    #[error("Could not do something with sled: {0:?}")]
-    SledError(#[from] sled::Error),
     #[error("Reqwest error: {0:?}")]
     ReqwestError(#[from] reqwest::Error),
     #[error("RSS error: {0:?}")]
