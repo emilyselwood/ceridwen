@@ -1,7 +1,7 @@
 # Task List and Major themes
 
+* Wire shutdown method through the crawler. Ctrl+c doesn't kill it currently
 * Document how to set up the system
-* Get postgres working.
 * Split into sub processes again...
 * Rebuild ceridwen init
 * Rebuild ceridwen index
@@ -26,6 +26,7 @@
     * Full spider of url?
 * Clean html page - remove all the cruft and end up with just the text of it. News articles body etc.
 * deep mode on rss feeds, so it will load up the linked page and index that instead of the summery in the feed
+* Move list of target servers into db
 
 ## Server
 
@@ -38,6 +39,7 @@
     * configuration editing
         * Adding sites
 * Admin API
+* API for adding Servers to the 
 
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

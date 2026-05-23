@@ -9,7 +9,7 @@ A personal search engine. Locally hosted and designed to run entirely in your ow
 * Must be fast enough
 * Must respect target server privacy, robots.txt and search flags
 * Must not require run time dependencies (The web ui must not load things from other domains)
-* Must not require external services (No database to set up and host, docker not required)
+* Must not require external services apart from the database
 
 This means that:
 

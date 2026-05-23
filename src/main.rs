@@ -51,9 +51,8 @@ async fn main() {
 
     // Run the application and handle error responses
     let result = ceridwen_main().await;
-    if result.is_err() {
-        let err = result.unwrap_err();
-        println!("Error running ceridwen: {}", err);
+    if let Err(e) = result {
+        println!("Error running ceridwen: {}", e);
     }
 
     // Clean up the lock file

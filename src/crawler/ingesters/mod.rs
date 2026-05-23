@@ -1,3 +1,4 @@
+/// These are tools for reading in a data source and adding to the index so we can search things.
 use crate::config::Config;
 use crate::config::Ingester;
 use crate::error::Error;
@@ -10,19 +11,12 @@ use log::warn;
 mod rss_ingester;
 mod wikipedia;
 
-/// These are tools for reading in a data source and adding to the index so we can search things.
-///
-
 /// entry point and error logging wrapper
 pub async fn process_ingester(ingester_config: Ingester, config: Config) {
     let name = ingester_config.name.clone();
     let result = process(ingester_config, config).await;
-    if result.is_err() {
-        warn!(
-            "Error processing ingester {}: {}",
-            name,
-            result.unwrap_err()
-        )
+    if let Err(e) = result {
+        warn!("Error processing ingester {}: {}", name, e)
     }
 }
 

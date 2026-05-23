@@ -3,7 +3,7 @@ use diesel::prelude::*;
 
 use crate::data;
 
-#[derive(Queryable, Selectable, Insertable)]
+#[derive(Queryable, QueryableByName, Selectable, Insertable)]
 #[diesel(table_name = crate::index::postgres::schema::page)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Page {
@@ -16,14 +16,15 @@ pub struct Page {
 
 #[derive(Insertable)]
 #[diesel(table_name = crate::index::postgres::schema::page)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct NewPage<'a> {
     pub url: &'a str,
     pub title: &'a str,
-    pub description: &'a str,
+    pub description: String,
     pub last_updated: NaiveDateTime,
 }
 
-#[derive(Queryable, Selectable, Insertable)]
+#[derive(Queryable, QueryableByName, Selectable, Insertable)]
 #[diesel(table_name = crate::index::postgres::schema::word)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Word {
@@ -56,10 +57,11 @@ impl Into<data::SearchResult> for &Page {
 
 impl<'a> From<&'a data::Page> for NewPage<'a> {
     fn from(value: &'a data::Page) -> Self {
+        let trimmed_content: String = value.content.chars().take(1000).collect();
         NewPage {
             url: &value.url.as_str(),
             title: &value.title,
-            description: &value.content,
+            description: trimmed_content,
             last_updated: Utc::now().naive_utc(),
         }
     }

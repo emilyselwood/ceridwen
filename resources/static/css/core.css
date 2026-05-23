@@ -1,15 +1,16 @@
 @font-face {
     font-family: Cinzel;
-    src: url("/fonts/Cinzel-Regular.ttf")  format('truetype');
+    src: url("/fonts/Cinzel-Regular.ttf") format("truetype");
 }
 
 @font-face {
     font-family: Cormorant;
-    src: url("/fonts/Cormorant-Light.ttf")  format('truetype');
+    src: url("/fonts/Cormorant-Light.ttf") format("truetype");
 }
 
 body {
-    font-family: 'Cormorant', 'Times New Roman', Times, serif;
+    font-family: "Cormorant", "Times New Roman", Times, serif;
+    font-size: 1.5em;
     background: #000;
     color: aqua;
     height: 100%;
@@ -21,7 +22,7 @@ input {
 }
 
 h1.ceridwenLogo {
-    font-family: 'Cinzel', 'Times New Roman', Times, serif;
+    font-family: "Cinzel", "Times New Roman", Times, serif;
     font-size: 64px;
 }
 

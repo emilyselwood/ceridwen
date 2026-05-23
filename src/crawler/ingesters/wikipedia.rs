@@ -15,6 +15,7 @@ use bytes::Buf;
 use bzip2::read::MultiBzDecoder;
 use chrono::Utc;
 use flume::Receiver;
+use futures_util::FutureExt;
 use log::debug;
 use log::info;
 use log::warn;
@@ -72,12 +73,20 @@ pub(crate) async fn process_wikipedia<A, T: Index<A>>(
         workers.push(tokio::spawn(page_processor(config.clone(), rx.clone())))
     }
     info!("Starting page feed");
+
+    let ctrl_c = tokio::signal::ctrl_c();
+    tokio::pin!(ctrl_c);
     // Now load up the queue
     while let Some(page) = read_page(&mut xml_reader)? {
         let result = tx.send_async(page).await;
         if let Err(error) = result {
             warn!("Error sending page into channel: {:?}", error);
             panic!("Could not send to channel!");
+        }
+
+        if ctrl_c.as_mut().now_or_never().is_some() {
+            info!("ctrl c. shutting down ");
+            return Ok(());
         }
     }
     info!("Done reading pages... waiting for processors to complete");
@@ -130,6 +139,10 @@ async fn download_archive(
 async fn page_processor(config: Config, rx: Receiver<Page>) {
     // TODO: this shouldn't be calling postgres directly - it shouldn't need to know the type.
     let index = &mut PostgresIndex::connect(&config).expect("Could not connect to db");
+
+    let ctrl_c = tokio::signal::ctrl_c();
+    tokio::pin!(ctrl_c);
+
     while let Ok(page) = rx.clone().into_recv_async().await {
         let start_time = Utc::now();
         let title = page.title.clone();
@@ -148,6 +161,11 @@ async fn page_processor(config: Config, rx: Receiver<Page>) {
             title,
             Utc::now() - start_time
         );
+
+        if ctrl_c.as_mut().now_or_never().is_some() {
+            info!("ctrl c. shutting down ");
+            return;
+        }
     }
 }
 

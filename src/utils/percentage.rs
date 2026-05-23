@@ -2,7 +2,6 @@
 /// Contains macros for converting most common numeric types to f64
 /// Does not care too much about accuracy, uses lossy conversions, and should mostly be used for logging messages
 /// and progress bars
-
 pub trait ConvertToFloat {
     fn to_f64_lossy(self) -> f64;
 }

@@ -1,6 +1,12 @@
-use crate::{config::Config, data, error::Error, index::Index};
+use crate::{
+    config::Config,
+    data,
+    error::Error,
+    index::Index,
+    utils::text_tools::{filter, tokenise},
+};
 
-use diesel::prelude::*;
+use diesel::{dsl::sum, prelude::*};
 
 pub mod models;
 pub mod schema;
@@ -17,7 +23,24 @@ impl Index<i64> for PostgresIndex {
     }
 
     fn search(&mut self, search_string: &str) -> Result<Vec<data::SearchResult>, Error> {
-        todo!()
+        // Format and filter the search string into a bunch of values
+
+        let words = filter(tokenise(search_string));
+
+        // create query
+        let query = schema::page::dsl::page
+            .inner_join(schema::word::dsl::word)
+            .select(schema::page::all_columns)
+            .filter(schema::word::text.eq_any(words))
+            .group_by(schema::page::all_columns)
+            .order_by(sum(schema::word::count).desc());
+
+        //debug!("final query: {}", query.into_sql());
+
+        let result = query.load(&mut self.conn)?;
+
+        // Convert the result of the query into a vec of search results.
+        Ok(result.iter().map(|p: &models::Page| p.into()).collect())
     }
 
     fn look_up_page(
@@ -69,6 +92,7 @@ impl Index<i64> for PostgresIndex {
     fn store_words(&mut self, page_id: i64, words: Vec<(String, u64)>) -> Result<(), Error> {
         let records: Vec<models::Word> = words
             .iter()
+            .filter(|(w, _c)| w.len() < 1000)
             .map(|(w, c)| models::Word {
                 text: w.clone(),
                 page_id,
